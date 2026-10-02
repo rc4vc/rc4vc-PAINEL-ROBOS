@@ -78,6 +78,13 @@
     /* --- Texto sobre a cor da marca (vitrine do login): igual nos dois temas,
        porque o fundo da vitrine é sempre o teal escuro da marca. */
     --sobre-marca: #ffffff;
+
+    /* --- História da tela de entrar: painel sempre escuro (teal profundo da
+       marca), igual nos dois temas, com cores de status legíveis sobre ele. */
+    --historia-fundo-1: #04252a;
+    --historia-fundo-2: #0a5e67;
+    --historia-ok: #5ee0a0;
+    --historia-falha: #ff8f8f;
 }
 
 /* ==========================================================================

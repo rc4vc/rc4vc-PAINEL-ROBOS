@@ -163,6 +163,16 @@ td,
     flex: none;
     filter: drop-shadow(0 2px 4px rgb(10 124 135 / 0.25));
 }
+/* Logo da RC4VC por extenso; o símbolo quadrado (o "4") só aparece com o
+   menu compacto, onde o logo inteiro não cabe. */
+.marca .marca-simbolo { display: none; }
+.marca-logo { height: 26px; width: auto; flex: none; }
+.marca > span {
+    padding-left: var(--e-3);
+    border-left: 1px solid var(--borda);
+    line-height: 1.1;
+    font-size: var(--fs-base);
+}
 
 .marca small {
     display: block;
@@ -324,6 +334,8 @@ a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-dec
     html[data-menu="compacto"] .app-menu { padding: var(--e-4) var(--e-2); gap: var(--e-1); overflow: visible; }
     html[data-menu="compacto"] .marca { justify-content: center; padding: 0 0 var(--e-3); }
     html[data-menu="compacto"] .marca > span { display: none; }
+    html[data-menu="compacto"] .marca-logo { display: none; }
+    html[data-menu="compacto"] .marca .marca-simbolo { display: block; }
 
     html[data-menu="compacto"] .menu-grupo { margin-top: var(--e-2); }
     html[data-menu="compacto"] .menu-grupo + .menu-grupo { padding-top: var(--e-2); border-top: 1px solid var(--borda); }
