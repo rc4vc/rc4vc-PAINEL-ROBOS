@@ -18,6 +18,9 @@ const TAXA_MINIMA = 0.8;
 const filtros = lerFiltros(PADROES);
 let dados = null;
 let grafico = null;
+// Robôs com o cartão virado (mostrando o que fazem). Fica guardado aqui
+// para a atualização de cada minuto não desvirar o cartão de ninguém.
+const virados = new Set();
 
 // API na Central; arquivo JSON no site estático (GitHub Pages). O `t=`
 // fura o cache do Pages (~10 min) para pegar a última publicação.
@@ -311,14 +314,28 @@ function desenharRobos(lista) {
                 const c = contagens(r).atual;
                 const tx = taxaDe(c);
                 const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
-                return html`<div class="item painel-robo">
+                const frente = html`<div class="painel-robo-frente">
                     <span class="ponto" data-estado="${estado(r)}" aria-label="${{ ok: 'última deu certo', falha: 'última falhou', rodando: 'rodando agora', neutro: 'sem execução' }[estado(r)]}"></span>
                     <span style="min-width:0">
-                        <span class="item-titulo">${r.nome}</span><br>
+                        <span class="item-titulo">${r.nome}${r.resumo ? html` <i class="bi bi-info-circle painel-robo-dica" aria-hidden="true"></i>` : ''}</span><br>
                         <span class="item-texto">${r.travado ? `parece travado (desde ${relativo(r.ultima_execucao_em)})` : r.rodando ? 'rodando agora' : (r.ultima_execucao_em ? `rodou ${relativo(r.ultima_execucao_em)}` : 'sem execução registrada')}</span>
                         <span class="progresso" data-estado="${est}" title="${tx === null ? 'Sem execução no período' : `${percentual(tx)} deram certo em ${numero(c[0] + c[1])}`}"><span style="width:${tx === null ? 0 : Math.round(tx * 100)}%"></span></span>
                     </span>
                     <span class="item-meta">${tx === null ? '—' : percentual(tx)}<br><span class="fraco">${plural(c[0] + c[1], 'vez', 'vezes')}</span></span>
+                </div>`;
+                // Sem resumo público o cartão não vira (e nem parece clicável).
+                if (!r.resumo) return html`<div class="item painel-robo"><div class="painel-robo-miolo">${frente}</div></div>`;
+                const virado = virados.has(r.id);
+                return html`<div class="item painel-robo" data-vira="${r.id}" role="button" tabindex="0" aria-pressed="${String(virado)}"
+                        aria-label="${virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}. Toque para ver o que este robô faz.`}">
+                    <div class="painel-robo-miolo">
+                        ${frente}
+                        <div class="painel-robo-verso" aria-hidden="${String(!virado)}">
+                            <span class="item-titulo">${r.nome}</span>
+                            <span class="painel-robo-resumo">${r.resumo}</span>
+                            <span class="minimo fraco"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> toque para voltar</span>
+                        </div>
+                    </div>
                 </div>`;
             })}</div></div>`;
     }));
@@ -372,6 +389,25 @@ async function carregar() {
 }
 
 ['periodo', 'tipo', 'situacao'].forEach((chave) => ligarSegmentado(`[data-filtro="${chave}"]`, filtros, chave, aoMudarFiltro));
+// Virar o cartão do robô: clique/toque, ou Enter/Espaço no teclado.
+function virar(el) {
+    const id = Number(el.dataset.vira);
+    const virado = !virados.has(id);
+    if (virado) virados.add(id); else virados.delete(id);
+    const r = dados.robos.find((x) => x.id === id);
+    el.setAttribute('aria-pressed', String(virado));
+    el.setAttribute('aria-label', virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}. Toque para ver o que este robô faz.`);
+    el.querySelector('.painel-robo-verso').setAttribute('aria-hidden', String(!virado));
+}
+$('#lista-robos').addEventListener('click', (ev) => {
+    const el = ev.target.closest('[data-vira]');
+    if (el) virar(el);
+});
+$('#lista-robos').addEventListener('keydown', (ev) => {
+    const el = ev.target.closest('[data-vira]');
+    if (el && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); virar(el); }
+});
+
 $('#filtro-seguradora').addEventListener('change', (ev) => { filtros.seguradora = ev.target.value; aoMudarFiltro(); });
 $('#limpar-filtros').addEventListener('click', () => {
     Object.assign(filtros, PADROES);

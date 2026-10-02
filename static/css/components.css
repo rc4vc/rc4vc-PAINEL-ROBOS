@@ -945,6 +945,22 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
 .painel-robo .progresso { display: block; height: 6px; margin-top: var(--e-2); }
 .painel-robo .item-meta { text-align: right; }
 
+/* Cartão do robô que vira (verso = o que ele faz, do resumo público). As
+   duas faces ocupam a mesma célula da grade: a altura é a da maior. */
+.painel-robo { display: block; perspective: 1000px; }
+.painel-robo-miolo { display: grid; transform-style: preserve-3d; transition: transform 0.5s ease; }
+.painel-robo-frente,
+.painel-robo-verso { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.painel-robo-frente { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--e-3); }
+.painel-robo-verso { display: flex; flex-direction: column; justify-content: center; gap: var(--e-1); transform: rotateY(180deg); }
+.painel-robo-resumo { color: var(--texto); font-size: var(--fs-sm); line-height: 1.45; }
+.painel-robo-dica { color: var(--texto-3); font-size: var(--fs-xs); }
+.painel-robo[data-vira] { cursor: pointer; }
+.painel-robo[data-vira]:hover { background: var(--superficie-2); }
+.painel-robo[data-vira]:hover .painel-robo-dica { color: var(--primaria-texto); }
+.painel-robo[aria-pressed="true"] .painel-robo-miolo { transform: rotateY(180deg); }
+@media (prefers-reduced-motion: reduce) { .painel-robo-miolo { transition: none; } }
+
 @media (max-width: 640px) {
     .painel-filtros { padding: var(--e-3); }
     .painel-filtros .segmentado { flex-wrap: wrap; }
