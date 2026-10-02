@@ -5,7 +5,8 @@ Site gerado e publicado automaticamente pela Central de RPAs da RC4VC
 publicação sobrescreve.
 
 - `index.html`: Painel ao vivo (história dos robôs, com filtros).
-- `quadro/`: Quadro ao vivo (o que está sendo automatizado).
+- `kanban/`: Quadro ao vivo (o que está sendo automatizado). `quadro/`
+  só leva ao endereço novo (era o endereço até 02-10-2026).
 - `dados/`: os números que as duas telas leem.
 
 Só dados que podem ser públicos: nomes dos robôs, seguradoras, contagens e
