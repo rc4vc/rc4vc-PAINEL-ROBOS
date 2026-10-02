@@ -125,10 +125,16 @@ td,
     min-height: 100vh;
 }
 
-/* O menu acompanha a rolagem da página (não fica preso na tela nem ganha
-   barra de rolagem própria). Estica até o fim da página pelo grid. */
+/* O menu fica preso na tela ao rolar a página (pedido de 02-10-2026). Se
+   não couber na altura da janela, ganha rolagem própria. */
 .app-menu {
-    position: relative;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     display: flex;
     flex-direction: column;
     gap: var(--e-2);
@@ -314,7 +320,8 @@ a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-dec
 
     html[data-menu="compacto"] .app { grid-template-columns: var(--largura-menu-compacto) minmax(0, 1fr); }
 
-    html[data-menu="compacto"] .app-menu { padding: var(--e-4) var(--e-2); gap: var(--e-1); }
+    /* Sem rolagem própria: ela cortaria a etiqueta flutuante do item. */
+    html[data-menu="compacto"] .app-menu { padding: var(--e-4) var(--e-2); gap: var(--e-1); overflow: visible; }
     html[data-menu="compacto"] .marca { justify-content: center; padding: 0 0 var(--e-3); }
     html[data-menu="compacto"] .marca > span { display: none; }
 
