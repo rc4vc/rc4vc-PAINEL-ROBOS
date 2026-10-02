@@ -16,11 +16,24 @@ const COLUNAS = [
 // API na Central; arquivo JSON no site estático (GitHub Pages). O `t=`
 // fura o cache do Pages (~10 min) para pegar a última publicação.
 const FONTE = document.querySelector('[data-fonte]').dataset.fonte;
+// No GitHub Pages: os números do rc4vc.com/central, republicados a cada
+// minuto. Se ele falhar ou demorar, vale a cópia do próprio site (FONTE).
+const FONTE_AO_VIVO = document.querySelector('[data-fonte]').dataset.fonteAoVivo;
 
-async function obter(url) {
-    const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, { headers: { Accept: 'application/json' } });
+async function obter(url, { limiteMs } = {}) {
+    const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, {
+        headers: { Accept: 'application/json' },
+        signal: limiteMs ? AbortSignal.timeout(limiteMs) : undefined,
+    });
     if (!r.ok) throw new Error(`A Central respondeu com erro (HTTP ${r.status}).`);
     return r.json();
+}
+
+async function obterDados() {
+    if (FONTE_AO_VIVO) {
+        try { return await obter(FONTE_AO_VIVO, { limiteMs: 10_000 }); } catch (erro) { /* cópia local abaixo */ }
+    }
+    return obter(FONTE);
 }
 
 const recentes = (lista) => lista.slice().sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em)));
@@ -64,7 +77,7 @@ function desenharQuadro(q) {
 async function carregar() {
     let q;
     try {
-        q = await obter(FONTE);
+        q = await obterDados();
     } catch (erro) {
         montar('#quadro-vivo', erroEmBloco(erro, carregar));
         return;
