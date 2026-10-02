@@ -74,6 +74,10 @@
     --z-menu: 30;
     --z-dialogo: 50;
     --z-toast: 60;
+
+    /* --- Texto sobre a cor da marca (vitrine do login): igual nos dois temas,
+       porque o fundo da vitrine é sempre o teal escuro da marca. */
+    --sobre-marca: #ffffff;
 }
 
 /* ==========================================================================
