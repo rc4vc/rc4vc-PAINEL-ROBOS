@@ -1,0 +1,240 @@
+/* ==========================================================================
+   Central de RPAs — tokens de design (identidade nova, 2026)
+
+   Tudo que é "decisão de marca" mora aqui e SÓ aqui: cor, tipo, espaço,
+   raio, sombra, movimento. Componentes e páginas usam as variáveis, nunca
+   valores soltos — trocar a paleta inteira é mexer neste arquivo.
+
+   Tema marcado no <html>: data-tema = "claro" | "escuro" (sem o atributo,
+   segue o sistema). A paleta é a da marca RC4VC (ver /design).
+
+   Cores de ESTADO (ok, atenção, falha, rodando) não mudam com a paleta:
+   verde sempre é "deu certo", vermelho sempre é "falhou". E nunca aparecem
+   sozinhas — sempre com ícone e texto (acessibilidade).
+   ========================================================================== */
+
+:root {
+    /* --- Tipografia: fontes do sistema (sem download, sem CDN).
+       Windows 11 tem Segoe UI Variable, que é moderna e muito legível. */
+    --fonte-texto: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+    --fonte-titulo: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, "Roboto", sans-serif;
+    --fonte-numero: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --fonte-mono: "Cascadia Mono", "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace;
+
+    --fs-2xs: 0.6875rem;  /* 11px */
+    --fs-xs: 0.75rem;     /* 12px */
+    --fs-sm: 0.875rem;    /* 14px */
+    --fs-base: 1rem;      /* 16px */
+    --fs-lg: 1.125rem;    /* 18px */
+    --fs-xl: 1.375rem;    /* 22px */
+    --fs-2xl: 1.75rem;    /* 28px */
+    --fs-3xl: 2.25rem;    /* 36px */
+    --fs-manchete: clamp(1.45rem, 1.05rem + 1.7vw, 2.35rem);
+    --fs-kpi: clamp(1.75rem, 1.4rem + 1.2vw, 2.4rem);
+
+    --peso-normal: 400;
+    --peso-medio: 550;
+    --peso-forte: 650;
+    --peso-titulo: 700;
+
+    --altura-linha: 1.55;
+    --altura-titulo: 1.2;
+
+    /* --- Espaço (escala de 4px) */
+    --e-1: 0.25rem;
+    --e-2: 0.5rem;
+    --e-3: 0.75rem;
+    --e-4: 1rem;
+    --e-5: 1.25rem;
+    --e-6: 1.5rem;
+    --e-8: 2rem;
+    --e-10: 2.5rem;
+    --e-12: 3rem;
+    --e-16: 4rem;
+
+    /* --- Raio */
+    --raio-sm: 6px;
+    --raio-md: 10px;
+    --raio-lg: 14px;
+    --raio-xl: 20px;
+    --raio-pilula: 999px;
+
+    /* --- Movimento (respeita "reduzir movimento" no fim do arquivo) */
+    --dur-rapida: 120ms;
+    --dur-media: 200ms;
+    --dur-lenta: 360ms;
+    --curva: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+    /* --- Layout */
+    --largura-menu: 256px;
+    --largura-menu-compacto: 68px;
+    --largura-conteudo: 1440px;
+    --altura-topo: 60px;
+    --z-topo: 20;
+    --z-menu: 30;
+    --z-dialogo: 50;
+    --z-toast: 60;
+}
+
+/* ==========================================================================
+   Paleta oficial: Marca RC4VC (escolhida em 29/09/2026) — o teal e o laranja
+   do logo, refinados para tela. "primaria" é a cor da ação e do destaque;
+   "acento" é o contraponto quente, usado com parcimônia.
+   ========================================================================== */
+:root {
+    --primaria-500: #0e9aa7;
+    --primaria-400: #22b5c2;
+    --primaria-300: #86d9e0;
+    --primaria-600: #0a7c87;
+    --acento-500: #f47b20;
+    --acento-400: #ff9544;
+}
+
+/* ==========================================================================
+   Tema CLARO (padrão)
+   ========================================================================== */
+:root,
+[data-tema="claro"] {
+    color-scheme: light;
+
+    --fundo: #f5f6f8;
+    --superficie: #ffffff;
+    --superficie-2: #f0f2f5;
+    --superficie-3: #e7eaef;
+    --superficie-invertida: #11151c;
+    --borda: #e2e5ea;
+    --borda-forte: #cdd2da;
+
+    --texto: #11151c;
+    --texto-2: #454d5a;
+    --texto-3: #6b7383;
+    --texto-invertido: #f4f5f7;
+
+    --primaria: var(--primaria-500);
+    --primaria-hover: var(--primaria-600);
+    --primaria-texto: var(--primaria-600);
+    --primaria-suave: color-mix(in srgb, var(--primaria-500) 11%, transparent);
+    --sobre-primaria: #ffffff;
+    --acento: var(--acento-500);
+    --acento-suave: color-mix(in srgb, var(--acento-500) 13%, transparent);
+
+    --ok: #1a7f4b;
+    --atencao: #9a5200;
+    --falha: #cd2b31;
+    --rodando: var(--primaria-500);
+    --neutro: #6b7383;
+
+    --ok-suave: #e6f6ec;
+    --atencao-suave: #fff3d6;
+    --falha-suave: #fdebec;
+    --rodando-suave: var(--primaria-suave);
+    --neutro-suave: #eef0f3;
+
+    --foco: color-mix(in srgb, var(--primaria-500) 55%, transparent);
+    --sombra-1: 0 1px 2px rgb(16 24 40 / 0.06), 0 1px 3px rgb(16 24 40 / 0.05);
+    --sombra-2: 0 4px 12px rgb(16 24 40 / 0.07), 0 2px 4px rgb(16 24 40 / 0.04);
+    --sombra-3: 0 18px 44px rgb(16 24 40 / 0.16), 0 4px 10px rgb(16 24 40 / 0.06);
+    --sobreposicao: rgb(9 12 18 / 0.45);
+    --toast-acao: var(--primaria-300);
+}
+
+/* ==========================================================================
+   Tema ESCURO — aplicado pelo sistema OU forçado pelo alternador
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) {
+        color-scheme: dark;
+
+        --fundo: #0b0d12;
+        --superficie: #12151c;
+        --superficie-2: #181c25;
+        --superficie-3: #20252f;
+        --superficie-invertida: #eef0f4;
+        --borda: #252a35;
+        --borda-forte: #353c49;
+
+        --texto: #edf0f4;
+        --texto-2: #b6bdc9;
+        --texto-3: #8c94a4;
+        --texto-invertido: #11151c;
+
+        --primaria: var(--primaria-400);
+        --primaria-hover: var(--primaria-300);
+        --primaria-texto: var(--primaria-300);
+        --primaria-suave: color-mix(in srgb, var(--primaria-400) 17%, transparent);
+        --sobre-primaria: #0b0d12;
+        --acento: var(--acento-400);
+        --acento-suave: color-mix(in srgb, var(--acento-400) 17%, transparent);
+
+        --ok: #3dd68c;
+        --atencao: #ffb224;
+        --falha: #ff6369;
+        --rodando: var(--primaria-400);
+        --neutro: #8c94a4;
+
+        --ok-suave: color-mix(in srgb, #3dd68c 15%, transparent);
+        --atencao-suave: color-mix(in srgb, #ffb224 15%, transparent);
+        --falha-suave: color-mix(in srgb, #ff6369 15%, transparent);
+        --rodando-suave: var(--primaria-suave);
+        --neutro-suave: color-mix(in srgb, #8c94a4 15%, transparent);
+
+        --foco: color-mix(in srgb, var(--primaria-400) 65%, transparent);
+        --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+        --sombra-2: 0 6px 16px rgb(0 0 0 / 0.35);
+        --sombra-3: 0 20px 50px rgb(0 0 0 / 0.55);
+        --sobreposicao: rgb(0 0 0 / 0.6);
+        --toast-acao: var(--primaria-600);
+    }
+}
+
+[data-tema="escuro"] {
+    color-scheme: dark;
+
+    --fundo: #0b0d12;
+    --superficie: #12151c;
+    --superficie-2: #181c25;
+    --superficie-3: #20252f;
+    --superficie-invertida: #eef0f4;
+    --borda: #252a35;
+    --borda-forte: #353c49;
+
+    --texto: #edf0f4;
+    --texto-2: #b6bdc9;
+    --texto-3: #8c94a4;
+    --texto-invertido: #11151c;
+
+    --primaria: var(--primaria-400);
+    --primaria-hover: var(--primaria-300);
+    --primaria-texto: var(--primaria-300);
+    --primaria-suave: color-mix(in srgb, var(--primaria-400) 17%, transparent);
+    --sobre-primaria: #0b0d12;
+    --acento: var(--acento-400);
+    --acento-suave: color-mix(in srgb, var(--acento-400) 17%, transparent);
+
+    --ok: #3dd68c;
+    --atencao: #ffb224;
+    --falha: #ff6369;
+    --rodando: var(--primaria-400);
+    --neutro: #8c94a4;
+
+    --ok-suave: color-mix(in srgb, #3dd68c 15%, transparent);
+    --atencao-suave: color-mix(in srgb, #ffb224 15%, transparent);
+    --falha-suave: color-mix(in srgb, #ff6369 15%, transparent);
+    --rodando-suave: var(--primaria-suave);
+    --neutro-suave: color-mix(in srgb, #8c94a4 15%, transparent);
+
+    --foco: color-mix(in srgb, var(--primaria-400) 65%, transparent);
+    --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --sombra-2: 0 6px 16px rgb(0 0 0 / 0.35);
+    --sombra-3: 0 20px 50px rgb(0 0 0 / 0.55);
+    --sobreposicao: rgb(0 0 0 / 0.6);
+        --toast-acao: var(--primaria-600);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --dur-rapida: 0ms;
+        --dur-media: 0ms;
+        --dur-lenta: 0ms;
+    }
+}
