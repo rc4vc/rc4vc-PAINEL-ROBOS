@@ -12,8 +12,6 @@ const SISTEMAS = '__sistemas';
 const PADROES = { periodo: 'hoje', seguradora: '', tipo: '', situacao: '' };
 const TIPO_TEXTO = { cotacao: 'de cotação', renovacao: 'de renovação', outros: 'de operação' };
 const SITUACAO_TEXTO = { problema: 'com problema', rodando: 'rodando agora', ok: 'que deram certo na última vez' };
-// Abaixo disto o robô entra em "Quem precisa de atenção" (com ao menos 3 execuções no período).
-const TAXA_MINIMA = 0.8;
 
 const filtros = lerFiltros(PADROES);
 let dados = null;
@@ -60,10 +58,13 @@ function rotuloSeguradora(valor) {
     return seguradorasDisponiveis().find(([k]) => k === valor)?.[1] || valor;
 }
 
+// "Pede atenção" vem pronto do servidor, com a mesma regra de "O que precisa
+// de você" da tela Hoje (05-10-2026) - antes cada tela tinha a sua.
+const motivosAtencao = (r) => r.atencao || [];
+
 function situacao(r) {
-    if (r.travado) return 'problema';
+    if (r.travado || motivosAtencao(r).length) return 'problema';
     if (r.rodando) return 'rodando';
-    if (r.ultimo_status === 'erro') return 'problema';
     if (r.ultimo_status === 'sucesso') return 'ok';
     return '';
 }
@@ -94,13 +95,7 @@ function contagens(r) {
 const taxaDe = ([s, e]) => (s + e ? s / (s + e) : null);
 
 function precisaAtencao(r) {
-    const { atual } = contagens(r);
-    const taxa = taxaDe(atual);
-    const motivos = [];
-    if (r.travado) motivos.push(`parece travado: rodando desde ${relativo(r.ultima_execucao_em)}`);
-    if (r.ultimo_status === 'erro' && !r.rodando) motivos.push('falhou na última execução');
-    if (taxa !== null && atual[0] + atual[1] >= 3 && taxa < TAXA_MINIMA) motivos.push(`só ${percentual(taxa)} deram certo no período`);
-    return motivos;
+    return motivosAtencao(r);
 }
 
 // --- Frases ---------------------------------------------------------------------------
@@ -280,7 +275,7 @@ function desenharRitmo(lista) {
 function desenharAtencao(atencao) {
     if (!atencao.length) {
         $('#frase-atencao').textContent = '';
-        montar('#lista-atencao', vazio('emoji-smile', 'Nenhum robô pede atenção neste recorte.', 'Todos acertaram a última execução e ficaram acima de 80% no período.'));
+        montar('#lista-atencao', vazio('emoji-smile', 'Nenhum robô pede atenção neste recorte.', 'Nenhum falhou hoje, travou ou deixou de rodar no horário.'));
         return;
     }
     const falharam = atencao.filter((a) => a.robo.ultimo_status === 'erro' && !a.robo.travado).length;
@@ -376,7 +371,7 @@ function desenhar() {
     const atencao = lista
         .map((r) => ({ robo: r, motivos: precisaAtencao(r), taxa: taxaDe(contagens(r).atual) }))
         .filter((a) => a.motivos.length)
-        .sort((a, b) => (b.robo.travado || b.robo.ultimo_status === 'erro') - (a.robo.travado || a.robo.ultimo_status === 'erro') || (a.taxa ?? 1) - (b.taxa ?? 1));
+        .sort((a, b) => b.robo.travado - a.robo.travado || (a.taxa ?? 1) - (b.taxa ?? 1));
     desenharFiltros(lista);
     desenharManchete(lista, totais, atencao);
     desenharNumeros(lista, totais, atencao);
