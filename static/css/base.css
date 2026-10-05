@@ -134,7 +134,9 @@ td,
     height: 100dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-width: thin;
+    /* Se ainda precisar rolar (janela muito baixa), a roda do mouse e o
+       toque funcionam, sem a barra cinza grudada na borda do menu. */
+    scrollbar-width: none;
     display: flex;
     flex-direction: column;
     gap: var(--e-2);
@@ -244,8 +246,15 @@ td,
     padding-top: var(--e-4);
     border-top: 1px solid var(--borda);
     display: grid;
-    gap: var(--e-2);
+    /* Perfil e "Sair" na mesma linha: com o "Sair" embaixo, ele era o
+       primeiro a ficar fora da tela. */
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--e-1);
 }
+/* "Sair" só com o ícone (o nome fica no aria-label/title). */
+.menu-rodape [data-sair] { font-size: 0; gap: 0; padding: var(--e-2); }
+.menu-rodape [data-sair] i { font-size: 1.05rem; }
 
 .usuario-atual {
     display: flex;
@@ -374,7 +383,7 @@ a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-dec
         line-height: 1.1rem;
     }
 
-    html[data-menu="compacto"] .menu-rodape { padding-top: var(--e-3); justify-items: center; }
+    html[data-menu="compacto"] .menu-rodape { padding-top: var(--e-3); justify-items: center; grid-template-columns: minmax(0, 1fr); }
     html[data-menu="compacto"] .usuario-atual { justify-content: center; padding: var(--e-2); }
     html[data-menu="compacto"] .usuario-atual > div { display: none; }
     html[data-menu="compacto"] .menu-rodape [data-sair] { font-size: 0; gap: 0; padding: var(--e-2); }
@@ -387,12 +396,23 @@ a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-dec
     .app-conteudo { padding: var(--e-6) var(--e-5) var(--e-12); }
 }
 
-/* --- Pouca altura (zoom alto): aperta o espaçamento para caber sem rolar */
-@media (max-height: 640px) and (min-width: 641px) {
-    .app-menu { padding-top: var(--e-3); padding-bottom: var(--e-3); }
-    .marca { padding-bottom: var(--e-2); }
+/* --- Menu mais justo: notebook / zoom do Windows (125%, 150%) e celular.
+   Com o espaçamento normal o menu completo pede ~900px de altura; abaixo
+   disso aparecia a barra de rolagem e o perfil/Sair ficavam cortados. */
+@media (max-height: 900px), (max-width: 640px) {
+    .app-menu { gap: var(--e-1); padding: var(--e-4) var(--e-2) var(--e-3); }
+    .marca { padding: 0 var(--e-2) var(--e-3); }
+    .marca-logo { height: 22px; }
+    .menu-grupo { margin-top: var(--e-2); }
+    .menu-grupo-titulo { padding: 0 var(--e-2); }
+    .menu-item { padding: 7px var(--e-2); }
+    .menu-item[aria-current="page"]::before { left: -8px; }
+    .menu-rodape { margin-top: var(--e-3); padding-top: var(--e-3); }
+    .usuario-atual { padding: var(--e-2); }
+}
+@media (max-height: 700px) and (min-width: 641px) {
     .menu-grupo { margin-top: var(--e-1); }
-    .menu-item { padding-top: 6px; padding-bottom: 6px; }
+    .menu-item { padding-top: 5px; padding-bottom: 5px; }
 }
 
 /* --- Celular: o menu vira gaveta */
@@ -402,8 +422,11 @@ a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-dec
     .app-menu {
         position: fixed;
         inset: 0 auto 0 0;
-        width: min(86vw, 300px);
+        /* Mesma largura do menu do computador: a gaveta não cobre quase a
+           tela inteira e sobra uma faixa do fundo para tocar e fechar. */
+        width: min(80vw, var(--largura-menu));
         overflow-y: auto;
+        padding-bottom: max(var(--e-3), env(safe-area-inset-bottom));
         transform: translateX(-102%);
         transition: transform var(--dur-media) var(--curva);
         box-shadow: var(--sombra-3);
