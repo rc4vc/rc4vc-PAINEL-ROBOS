@@ -136,3 +136,8 @@ document.querySelectorAll('[data-copiar-link]').forEach((b) => b.addEventListene
 if (window.CENTRAL?.admin && document.querySelector('[data-texto]')) {
     import('./textos.js').then((m) => m.ativarEdicao());
 }
+
+// Som e notificação do Windows quando surge um alerta novo (sininho no topo).
+if (document.querySelector('[data-avisos-botao]')) {
+    import('./avisos.js').then((m) => m.iniciarAvisos());
+}
