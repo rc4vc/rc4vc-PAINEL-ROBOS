@@ -142,8 +142,11 @@ export function toast(mensagem, { estado = 'ok', acao = null, duracao = 5000 } =
     const el = document.createElement('div');
     el.className = 'toast';
     el.dataset.estado = estado;
+    // duracao 0 = fica até a pessoa fechar (no X ou na ação).
+    const fixo = duracao === 0;
     montar(el, html`<i class="bi bi-${ICONES_TOAST[estado] || ICONES_TOAST.info}" aria-hidden="true"></i><span>${mensagem}</span>
-        ${acao ? html`<button type="button" class="toast-acao">${acao.rotulo}</button>` : ''}`);
+        ${acao ? html`<button type="button" class="toast-acao">${acao.rotulo}</button>` : ''}
+        ${fixo ? html`<button type="button" class="toast-fechar" aria-label="Fechar aviso" title="Fechar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>` : ''}`);
     let fechado = false;
     const fechar = () => {
         if (fechado) return;
@@ -157,8 +160,9 @@ export function toast(mensagem, { estado = 'ok', acao = null, duracao = 5000 } =
             try { await acao.fn(); } catch (erro) { toast(erro.message || 'Não deu certo.', { estado: 'falha' }); }
         });
     }
+    el.querySelector('.toast-fechar')?.addEventListener('click', fechar);
     areaToasts().appendChild(el);
-    setTimeout(fechar, acao ? Math.max(duracao, 7000) : duracao);
+    if (!fixo) setTimeout(fechar, acao ? Math.max(duracao, 7000) : duracao);
     return fechar;
 }
 

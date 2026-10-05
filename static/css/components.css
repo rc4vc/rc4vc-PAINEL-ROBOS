@@ -629,6 +629,18 @@ dialog.dialogo[open] { animation: surgir var(--dur-media) var(--curva); }
     font-weight: var(--peso-forte);
     cursor: pointer;
 }
+.toast .toast-acao + .toast-fechar { margin-left: 0; }
+.toast .toast-fechar {
+    margin-left: auto;
+    padding: var(--e-1);
+    border: 0;
+    background: transparent;
+    color: inherit;
+    opacity: .7;
+    cursor: pointer;
+}
+.toast .toast-fechar:hover { opacity: 1; }
+.toast .toast-fechar i { font-size: .9rem; }
 .toast.saindo { opacity: 0; transform: translateY(6px); transition: all var(--dur-media) var(--curva); }
 
 /* --------------------------------------------------------------------------
