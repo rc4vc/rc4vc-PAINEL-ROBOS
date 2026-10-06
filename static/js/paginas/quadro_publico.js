@@ -68,7 +68,7 @@ function desenharQuadro(q) {
                 <h4>${c.tipo_rpa}</h4>
                 <span class="chip-robo">${c.seguradora}</span>
                 ${c.descricao ? html`<p>${c.descricao}</p>` : ''}
-                <span class="minimo fraco">atualizado ${relativo(c.atualizado_em)}</span>
+                <span class="minimo fraco">${c.rpa_id ? `robô da Central, entrou ${relativo(c.criado_em)}` : `atualizado ${relativo(c.atualizado_em)}`}</span>
             </article>`) : html`<p class="minimo fraco quadro-vazio">Nada aqui agora.</p>`}
         </section>`;
     }));
