@@ -538,8 +538,32 @@ a.cartao:hover { text-decoration: none; border-color: var(--borda-forte); box-sh
 .aviso[data-estado="falha"] > i { color: var(--falha); }
 .aviso[data-estado="info"] { background: var(--primaria-suave); border-color: color-mix(in srgb, var(--primaria) 30%, transparent); }
 .aviso[data-estado="info"] > i { color: var(--primaria-texto); }
-/* Faixa "Robôs pausados" da tela Hoje: texto à esquerda, botão à direita. */
-.aviso .pausa-faixa { flex: 1; min-width: 0; }
+/* Interruptor dos robôs (tela Hoje): verde = ligados, vermelho = pausados.
+   Mesma história da janela do atalho da área de trabalho. */
+.robos-chave {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-4);
+    padding: var(--e-4) var(--e-5); border-radius: var(--raio-lg); border: 1px solid var(--borda);
+}
+.robos-chave[data-estado="ligado"] { background: var(--ok-suave); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.robos-chave[data-estado="pausado"] { background: var(--falha-suave); border-color: color-mix(in srgb, var(--falha) 35%, transparent); }
+.robos-chave .historia { flex: 1 1 18rem; min-width: 0; }
+.robos-chave .estado { font-weight: 700; font-size: var(--fs-base); letter-spacing: .02em; }
+.robos-chave[data-estado="ligado"] .estado { color: var(--ok); }
+.robos-chave[data-estado="pausado"] .estado { color: var(--falha); }
+.robos-chave .historia p { margin: var(--e-1) 0 0; font-size: var(--fs-sm); color: var(--texto-2); }
+/* A chave em si: pílula com bolinha (direita = ligado). */
+.chave {
+    position: relative; flex: none; width: 56px; height: 30px; border-radius: 999px; border: 0; padding: 0;
+    background: var(--falha); transition: background .2s; cursor: default;
+}
+.chave[aria-checked="true"] { background: var(--ok); }
+.chave::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .3); transition: left .2s;
+}
+.chave[aria-checked="true"]::after { left: 29px; }
+button.chave:not(:disabled) { cursor: pointer; }
+button.chave:focus-visible { outline: 2px solid var(--primaria); outline-offset: 2px; }
 
 /* --------------------------------------------------------------------------
    Diálogo (substitui modal do Bootstrap e confirm()/prompt()/alert())
