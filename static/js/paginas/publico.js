@@ -184,7 +184,9 @@ function desenharManchete(lista, totais, atencao) {
     }
     $('#manchete-contexto').textContent = contexto;
     const rodando = lista.filter((r) => r.rodando);
+    // Pausa dos robôs (notebook fora da empresa): só desde quando, sem nome.
     montar('#manchete-rodape', html`
+        ${dados.pausado_desde ? html`<span><i class="bi bi-pause-circle"></i> Robôs pausados desde ${hora(dados.pausado_desde)}</span>` : ''}
         <span><span class="ponto" data-estado="${rodando.length ? 'rodando' : 'neutro'}"></span> ${rodando.length ? `${plural(rodando.length, 'robô rodando', 'robôs rodando')} agora: ${rodando.map((r) => r.nome).join(', ')}` : 'Nenhum robô rodando neste momento'}</span>`);
 }
 

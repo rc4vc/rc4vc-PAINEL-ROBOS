@@ -538,6 +538,8 @@ a.cartao:hover { text-decoration: none; border-color: var(--borda-forte); box-sh
 .aviso[data-estado="falha"] > i { color: var(--falha); }
 .aviso[data-estado="info"] { background: var(--primaria-suave); border-color: color-mix(in srgb, var(--primaria) 30%, transparent); }
 .aviso[data-estado="info"] > i { color: var(--primaria-texto); }
+/* Faixa "Robôs pausados" da tela Hoje: texto à esquerda, botão à direita. */
+.aviso .pausa-faixa { flex: 1; min-width: 0; }
 
 /* --------------------------------------------------------------------------
    Diálogo (substitui modal do Bootstrap e confirm()/prompt()/alert())
