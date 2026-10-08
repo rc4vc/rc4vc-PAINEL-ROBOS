@@ -1085,12 +1085,16 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
     border-top: 3px solid var(--borda-forte);
     border-radius: var(--raio-lg);
 }
-.quadro-coluna[data-coluna="em_desenvolvimento"] { border-top-color: var(--rodando); }
-.quadro-coluna[data-coluna="pronto_para_testar"] { border-top-color: var(--atencao); }
+/* Cor de cada coluna = o quanto a automação avançou: cinza (ideia) → teal
+   claro → teal → verde (rodando sozinha). Âmbar ficou de fora: na Central
+   inteira ele quer dizer "atenção", e "pronto para testar" não é problema. */
+.quadro-coluna[data-coluna="em_desenvolvimento"] { border-top-color: var(--primaria-300); }
+.quadro-coluna[data-coluna="pronto_para_testar"] { border-top-color: var(--primaria); }
 .quadro-coluna[data-coluna="em_producao"] { border-top-color: var(--ok); }
-.quadro-coluna header { display: flex; align-items: center; gap: var(--e-2); padding: var(--e-1) var(--e-2); }
+.quadro-coluna header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--e-2); padding: var(--e-1) var(--e-2); }
 .quadro-coluna header h3 { margin: 0; font-size: var(--fs-sm); }
 .quadro-coluna header .selo { margin-left: auto; }
+.quadro-coluna header p { grid-column: 2 / -1; margin: 0; color: var(--texto-3); font-size: var(--fs-xs); }
 .quadro-cartao {
     display: grid;
     justify-items: start;

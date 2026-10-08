@@ -7,10 +7,11 @@ import { relativo, plural } from '../core/format.js';
 import { aCada } from '../core/atualizacao.js';
 
 const COLUNAS = [
-    ['planejado', 'Planejado', 'lightbulb', 'a ideia já está anotada'],
-    ['em_desenvolvimento', 'Em desenvolvimento', 'code-slash', 'sendo construída agora'],
-    ['pronto_para_testar', 'Pronto para testar', 'clipboard-check', 'esperando o teste da equipe'],
-    ['em_producao', 'Em produção', 'rocket-takeoff', 'já roda sozinha'],
+// [chave, título, ícone, o que quer dizer] — a frase aparece no topo da coluna.
+    ['planejado', 'Planejado', 'lightbulb', 'Ideias na fila.'],
+    ['em_desenvolvimento', 'Em desenvolvimento', 'code-slash', 'Sendo construídas agora.'],
+    ['pronto_para_testar', 'Pronto para testar', 'clipboard-check', 'Esperando o teste da equipe.'],
+    ['em_producao', 'Em produção', 'rocket-takeoff', 'Já rodam sozinhas.'],
 ];
 
 // API na Central; arquivo JSON no site estático (GitHub Pages). O `t=`
@@ -51,19 +52,11 @@ function desenharManchete(q) {
     ].filter(Boolean).join(' ');
 }
 
-function desenharNumeros(q) {
-    COLUNAS.forEach(([chave, , , frase]) => {
-        const el = document.getElementById(`kpi-${chave}`);
-        montar(el.querySelector('[data-valor]'), html`${(q[chave] || []).length}`);
-        el.querySelector('[data-nota]').textContent = frase;
-    });
-}
-
 function desenharQuadro(q) {
-    montar('#quadro-vivo', COLUNAS.map(([chave, titulo, icone]) => {
+    montar('#quadro-vivo', COLUNAS.map(([chave, titulo, icone, frase]) => {
         const cartoes = recentes(q[chave] || []);
         return html`<section class="quadro-coluna" data-coluna="${chave}" aria-label="${titulo}">
-            <header><i class="bi bi-${icone}" aria-hidden="true"></i><h3>${titulo}</h3><span class="selo" data-estado="neutro">${cartoes.length}</span></header>
+            <header><i class="bi bi-${icone}" aria-hidden="true"></i><h3>${titulo}</h3><span class="selo" data-estado="neutro">${cartoes.length}</span><p>${frase}</p></header>
             ${cartoes.length ? cartoes.map((c) => html`<article class="quadro-cartao">
                 <h4>${c.tipo_rpa}</h4>
                 <span class="chip-robo">${c.seguradora}</span>
@@ -83,7 +76,6 @@ async function carregar() {
         return;
     }
     desenharManchete(q);
-    desenharNumeros(q);
     desenharQuadro(q);
 }
 

@@ -93,6 +93,8 @@
     --historia-fundo-2: #0a5e67;
     --historia-ok: #5ee0a0;
     --historia-falha: #ff8f8f;
+    --historia-rodando: var(--primaria-300);  /* rodando = teal, como no resto da Central */
+    --historia-destaque: #ffb27a;  /* laranja da marca clareado: 3,2:1 no pior ponto do fundo */
 }
 
 /* ==========================================================================
