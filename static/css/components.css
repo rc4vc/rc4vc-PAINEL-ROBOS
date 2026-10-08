@@ -803,6 +803,7 @@ a.rotulo:hover { color: var(--primaria-texto); }
     font-size: var(--fs-2xs);
     font-weight: var(--peso-forte);
 }
+.dia-agora[data-rotulo]::before { content: attr(data-rotulo); white-space: nowrap; }  /* "agora 08:43" */
 .dia-agora.sem-rotulo::before { display: none; }
 @media (max-width: 640px) {
     .dia { --largura-rotulo-dia: 110px; padding: var(--e-3); }
@@ -915,6 +916,19 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
 .item-titulo { font-weight: var(--peso-medio); font-size: var(--fs-sm); }
 .item-texto { color: var(--texto-2); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; }
 .item-meta { color: var(--texto-3); font-size: var(--fs-xs); white-space: nowrap; }
+/* Item com corpo em linhas (título, texto, dica, barra) e ações à direita;
+   em tela estreita as ações descem para baixo do texto. */
+.item-corpo { display: grid; gap: 2px; min-width: 0; }
+.item-corpo .item-titulo { color: var(--texto); }
+.item-corpo a.item-titulo:hover { color: var(--primaria-texto); }
+.item-dica { display: flex; gap: var(--e-1); color: var(--texto-2); font-size: var(--fs-xs); }
+.item-dica i { color: var(--atencao); }
+.item-corpo .progresso { height: 6px; margin-top: var(--e-1); }
+.item-acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--e-2); }
+@media (max-width: 560px) {
+    .item:has(.item-acoes) { grid-template-columns: auto minmax(0, 1fr); }
+    .item-acoes { grid-column: 2; justify-content: flex-start; }
+}
 
 /* --------------------------------------------------------------------------
    Abas (dentro de uma página)
@@ -1103,7 +1117,9 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
 
 .hoje-topo {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    /* A manchete leva a maior parte; medido em 1366 px, com "auto" os números
+       ocupavam 536 px e espremiam a frase em 4 linhas. */
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     align-items: center;
     gap: var(--e-4) var(--e-8);
     margin-bottom: var(--e-6);
@@ -1131,7 +1147,6 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
 .kpis-faixa .kpi {
     flex: 1 1 0;
     min-width: 0;
-    max-width: 14rem;
     padding: var(--e-3) var(--e-5);
     background: transparent;
     border: 0;
@@ -1149,9 +1164,13 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
     margin-bottom: var(--e-8);
 }
 
+/* Estado vazio dentro dos quadros de Hoje: mais baixo (era ~270 px de altura
+   para dizer "nada precisa de você"). */
+.grade-hoje .vazio { padding: var(--e-6) var(--e-5); }
+.grade-hoje .vazio i { font-size: 1.4rem; }
+
 @media (max-width: 1100px) {
     .hoje-topo { grid-template-columns: minmax(0, 1fr); }
-    .kpis-faixa .kpi { max-width: none; }
 }
 @media (max-width: 900px) {
     .grade-hoje { grid-template-columns: minmax(0, 1fr); }

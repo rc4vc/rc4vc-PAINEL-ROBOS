@@ -315,6 +315,16 @@ a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-dec
     min-width: 0;
 }
 .app-topo .migalhas a { color: var(--texto-3); }
+.app-topo .migalha-grupo { white-space: nowrap; }
+.app-topo .migalha-sep { font-size: 0.7em; color: var(--texto-3); }
+/* Celular: o topo não cabe tudo (o "Painel ao vivo" cobria o título). Fica
+   só o essencial: título, Painel ao vivo só com ícone, Ajuda, sino, tema. */
+@media (max-width: 640px) {
+    .app-topo .migalha-grupo, .app-topo .migalha-sep,
+    .app-topo #ultima-atualizacao, .app-topo [data-copiar-link], .app-topo .rotulo-longo { display: none; }
+    .app-topo .botao-sem-login { width: 38px; padding: 0; }
+    .app-topo .acoes-topo { gap: 0; }
+}
 .app-topo .migalhas strong { color: var(--texto); font-weight: var(--peso-medio); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-topo .acoes-topo { margin-left: auto; display: flex; align-items: center; gap: var(--e-2); }
 

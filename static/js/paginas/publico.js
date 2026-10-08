@@ -426,3 +426,12 @@ $('#limpar-filtros').addEventListener('click', () => {
 });
 
 aCada(60_000, carregar, { rotulo: '#ultima-atualizacao' });
+
+// Trocou o tema (claro/escuro): o gráfico guarda as cores de quando foi
+// criado, então é refeito com as cores do tema novo.
+document.addEventListener('central:tema', () => {
+    if (!grafico) return;
+    grafico.destroy();
+    grafico = null;
+    desenhar();
+});
