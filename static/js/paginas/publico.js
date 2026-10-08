@@ -6,6 +6,7 @@
 import { html, montar, $, vazio, erroEmBloco } from '../core/ui.js';
 import { relativo, percentual, numero, plural, dataCurta, hora } from '../core/format.js';
 import { aCada } from '../core/atualizacao.js';
+import { barrasSucessoFalha } from '../core/graficos.js';
 import { lerFiltros, gravarFiltros, ligarSegmentado } from '../core/filtros.js';
 
 const SISTEMAS = '__sistemas';
@@ -251,10 +252,7 @@ function desenharRitmo(lista) {
     const cor = (v) => css.getPropertyValue(v).trim();
     const dadosGrafico = {
         labels: rotulos,
-        datasets: [
-            { label: 'Deu certo', data: valores.map(([s]) => s), backgroundColor: cor('--ok'), borderRadius: 4, stack: 's' },
-            { label: 'Falhou', data: valores.map(([, e]) => e), backgroundColor: cor('--falha'), borderRadius: 4, stack: 's' },
-        ],
+        datasets: barrasSucessoFalha(valores.map(([s]) => s), valores.map(([, e]) => e)),
     };
     window.Chart.defaults.color = cor('--texto-3');
     window.Chart.defaults.font.family = cor('--fonte-texto');
@@ -277,7 +275,7 @@ function desenharRitmo(lista) {
 function desenharAtencao(atencao) {
     if (!atencao.length) {
         $('#frase-atencao').textContent = '';
-        montar('#lista-atencao', vazio('emoji-smile', 'Nenhum robô pede atenção neste recorte.', 'Nenhum falhou hoje, travou ou deixou de rodar no horário.'));
+        montar('#lista-atencao', vazio('check2-circle', 'Nenhum robô pede atenção neste recorte.', 'Nenhum falhou hoje, travou ou deixou de rodar no horário.'));
         return;
     }
     const falharam = atencao.filter((a) => a.robo.ultimo_status === 'erro' && !a.robo.travado).length;

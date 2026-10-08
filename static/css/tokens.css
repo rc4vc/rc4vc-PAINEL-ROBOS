@@ -5,8 +5,16 @@
    raio, sombra, movimento. Componentes e páginas usam as variáveis, nunca
    valores soltos — trocar a paleta inteira é mexer neste arquivo.
 
-   Tema marcado no <html>: data-tema = "claro" | "escuro" (sem o atributo,
-   segue o sistema). A paleta é a da marca RC4VC (ver /design).
+   Tema marcado no <html>: data-tema = "claro" | "escuro", SEMPRE o tema
+   efetivo. No modo automático quem resolve é o script do <head> (layout.html
+   e layout_simples.html, antes de pintar) e casca.js (quando o sistema muda),
+   lendo prefers-color-scheme: dark. Assim o tema escuro é escrito uma vez só
+   (antes eram dois blocos iguais, um no @media e outro no atributo).
+   A paleta é a da marca RC4VC (ver /design).
+
+   Contraste (08-10-2026, medido): texto comum >= 4,5:1 nos dois temas. Por
+   isso o botão principal usa o teal escuro (--primaria-600) no tema claro, e
+   texto sobre verde/vermelho/laranja usa --sobre-estado / --sobre-acento.
 
    Cores de ESTADO (ok, atenção, falha, rodando) não mudam com a paleta:
    verde sempre é "deu certo", vermelho sempre é "falhou". E nunca aparecem
@@ -97,8 +105,13 @@
     --primaria-400: #22b5c2;
     --primaria-300: #86d9e0;
     --primaria-600: #0a7c87;
+    --primaria-700: #075e66;
     --acento-500: #f47b20;
     --acento-400: #ff9544;
+    --acento-700: #9c4206;
+
+    /* Texto sobre o laranja da marca: escuro nos dois temas (branco dava 2,7:1). */
+    --sobre-acento: #11151c;
 }
 
 /* ==========================================================================
@@ -118,15 +131,18 @@
 
     --texto: #11151c;
     --texto-2: #454d5a;
-    --texto-3: #6b7383;
+    --texto-3: #5d6575;      /* 5,2:1 sobre superficie-2 (o #6b7383 dava 4,25) */
     --texto-invertido: #f4f5f7;
 
-    --primaria: var(--primaria-500);
-    --primaria-hover: var(--primaria-600);
+    /* Botão e destaque no teal escuro: branco sobre #0e9aa7 dava 3,4:1. O
+       teal claro segue em ícones, gráficos e no logo, onde não carrega texto. */
+    --primaria: var(--primaria-600);
+    --primaria-hover: var(--primaria-700);
     --primaria-texto: var(--primaria-600);
     --primaria-suave: color-mix(in srgb, var(--primaria-500) 11%, transparent);
     --sobre-primaria: #ffffff;
     --acento: var(--acento-500);
+    --acento-texto: var(--acento-700);   /* laranja como texto: 5,8:1 no suave */
     --acento-suave: color-mix(in srgb, var(--acento-500) 13%, transparent);
 
     --ok: #1a7f4b;
@@ -134,6 +150,7 @@
     --falha: #cd2b31;
     --rodando: var(--primaria-500);
     --neutro: #6b7383;
+    --sobre-estado: #ffffff;  /* texto sobre --ok/--falha cheios */
 
     --ok-suave: #e6f6ec;
     --atencao-suave: #fff3d6;
@@ -150,54 +167,12 @@
 }
 
 /* ==========================================================================
-   Tema ESCURO — aplicado pelo sistema OU forçado pelo alternador
+   Tema ESCURO — escolhido no alternador OU vindo do sistema (o script do
+   <head> marca data-tema="escuro" quando prefers-color-scheme: dark).
+   Cores de estado um pouco menos saturadas que antes (08-10-2026): o verde e o
+   vermelho "neon" vibravam em áreas grandes (barras de gráfico) sobre o
+   quase-preto. Todas seguem acima de 4,5:1 como texto sobre a superfície.
    ========================================================================== */
-@media (prefers-color-scheme: dark) {
-    :root:not([data-tema="claro"]) {
-        color-scheme: dark;
-
-        --fundo: #0b0d12;
-        --superficie: #12151c;
-        --superficie-2: #181c25;
-        --superficie-3: #20252f;
-        --superficie-invertida: #eef0f4;
-        --borda: #252a35;
-        --borda-forte: #353c49;
-
-        --texto: #edf0f4;
-        --texto-2: #b6bdc9;
-        --texto-3: #8c94a4;
-        --texto-invertido: #11151c;
-
-        --primaria: var(--primaria-400);
-        --primaria-hover: var(--primaria-300);
-        --primaria-texto: var(--primaria-300);
-        --primaria-suave: color-mix(in srgb, var(--primaria-400) 17%, transparent);
-        --sobre-primaria: #0b0d12;
-        --acento: var(--acento-400);
-        --acento-suave: color-mix(in srgb, var(--acento-400) 17%, transparent);
-
-        --ok: #3dd68c;
-        --atencao: #ffb224;
-        --falha: #ff6369;
-        --rodando: var(--primaria-400);
-        --neutro: #8c94a4;
-
-        --ok-suave: color-mix(in srgb, #3dd68c 15%, transparent);
-        --atencao-suave: color-mix(in srgb, #ffb224 15%, transparent);
-        --falha-suave: color-mix(in srgb, #ff6369 15%, transparent);
-        --rodando-suave: var(--primaria-suave);
-        --neutro-suave: color-mix(in srgb, #8c94a4 15%, transparent);
-
-        --foco: color-mix(in srgb, var(--primaria-400) 65%, transparent);
-        --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
-        --sombra-2: 0 6px 16px rgb(0 0 0 / 0.35);
-        --sombra-3: 0 20px 50px rgb(0 0 0 / 0.55);
-        --sobreposicao: rgb(0 0 0 / 0.6);
-        --toast-acao: var(--primaria-600);
-    }
-}
-
 [data-tema="escuro"] {
     color-scheme: dark;
 
@@ -220,17 +195,19 @@
     --primaria-suave: color-mix(in srgb, var(--primaria-400) 17%, transparent);
     --sobre-primaria: #0b0d12;
     --acento: var(--acento-400);
+    --acento-texto: var(--acento-400);
     --acento-suave: color-mix(in srgb, var(--acento-400) 17%, transparent);
 
-    --ok: #3dd68c;
-    --atencao: #ffb224;
-    --falha: #ff6369;
+    --ok: #4cc38a;
+    --atencao: #f0a83a;
+    --falha: #f2666b;
     --rodando: var(--primaria-400);
     --neutro: #8c94a4;
+    --sobre-estado: #0b0d12;  /* branco sobre o verde claro dava 1,9:1 */
 
-    --ok-suave: color-mix(in srgb, #3dd68c 15%, transparent);
-    --atencao-suave: color-mix(in srgb, #ffb224 15%, transparent);
-    --falha-suave: color-mix(in srgb, #ff6369 15%, transparent);
+    --ok-suave: color-mix(in srgb, #4cc38a 15%, transparent);
+    --atencao-suave: color-mix(in srgb, #f0a83a 15%, transparent);
+    --falha-suave: color-mix(in srgb, #f2666b 15%, transparent);
     --rodando-suave: var(--primaria-suave);
     --neutro-suave: color-mix(in srgb, #8c94a4 15%, transparent);
 
@@ -239,7 +216,7 @@
     --sombra-2: 0 6px 16px rgb(0 0 0 / 0.35);
     --sombra-3: 0 20px 50px rgb(0 0 0 / 0.55);
     --sobreposicao: rgb(0 0 0 / 0.6);
-        --toast-acao: var(--primaria-600);
+    --toast-acao: var(--primaria-600);
 }
 
 @media (prefers-reduced-motion: reduce) {

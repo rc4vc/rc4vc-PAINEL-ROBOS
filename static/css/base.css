@@ -192,10 +192,10 @@ td,
     margin: 0 0 var(--e-1);
     padding: 0 var(--e-3);
     font-family: var(--fonte-texto);
-    font-size: var(--fs-2xs);
+    font-size: var(--fs-xs);   /* era 11px em maiúsculas: pequeno demais */
     font-weight: var(--peso-forte);
     color: var(--texto-3);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
@@ -233,7 +233,7 @@ td,
     padding: 0 var(--e-2);
     border-radius: var(--raio-pilula);
     background: var(--falha);
-    color: #fff;
+    color: var(--sobre-estado);
     font-size: var(--fs-2xs);
     font-weight: var(--peso-forte);
     line-height: 1.35rem;
@@ -278,7 +278,7 @@ a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-dec
     height: 32px;
     border-radius: 50%;
     background: var(--acento-suave);
-    color: var(--acento);
+    color: var(--acento-texto);
     font-weight: var(--peso-forte);
     font-size: var(--fs-sm);
 }

@@ -41,10 +41,12 @@
 .btn-fantasma { background: transparent; color: var(--texto-2); }
 .btn-fantasma:hover { background: var(--superficie-2); color: var(--texto); }
 
-.btn-perigo { background: var(--falha); color: #fff; }
+/* Texto em --sobre-estado: branco no claro, quase-preto no escuro (o branco
+   sobre o verde/vermelho claros do tema escuro dava 1,9:1 e 2,9:1). */
+.btn-perigo { background: var(--falha); color: var(--sobre-estado); }
 .btn-perigo:hover { background: color-mix(in srgb, var(--falha) 85%, #000); }
 
-.btn-ok { background: var(--ok); color: #fff; }
+.btn-ok { background: var(--ok); color: var(--sobre-estado); }
 .btn-ok:hover { background: color-mix(in srgb, var(--ok) 85%, #000); }
 
 .btn-sm { min-height: 30px; padding: 0 var(--e-3); font-size: var(--fs-xs); border-radius: var(--raio-sm); }
@@ -84,10 +86,9 @@
     padding: var(--e-8);
     margin-bottom: var(--e-8);
     border-radius: var(--raio-xl);
-    background:
-        radial-gradient(120% 140% at 100% 0%, var(--primaria-suave), transparent 55%),
-        radial-gradient(80% 120% at 0% 100%, var(--acento-suave), transparent 60%),
-        var(--superficie);
+    /* Sem degradê (08-10-2026): o teal + laranja radial era só decoração e, no
+       tema escuro, virava uma mancha marrom atrás do texto. */
+    background: var(--superficie);
     border: 1px solid var(--borda);
     box-shadow: var(--sombra-1);
 }
@@ -180,7 +181,14 @@
     padding: var(--e-4) var(--e-5);
     border-bottom: 1px solid var(--borda);
 }
+.cartao-cabecalho h2,
 .cartao-cabecalho h3 { margin: 0; font-size: var(--fs-base); }
+/* Cartão que pede ação (ex.: "O que precisa de você" com itens): sobe um
+   degrau — borda âmbar e sombra maior. O JS liga data-urgente="true". */
+.cartao[data-urgente="true"] {
+    border-color: color-mix(in srgb, var(--atencao) 45%, var(--borda));
+    box-shadow: var(--sombra-2);
+}
 .cartao-rodape {
     padding: var(--e-3) var(--e-5);
     border-top: 1px solid var(--borda);
@@ -275,20 +283,24 @@ a.cartao:hover { text-decoration: none; border-color: var(--borda-forte); box-sh
 .selo[data-estado="falha"] { background: var(--falha-suave); color: var(--falha); }
 .selo[data-estado="rodando"] { background: var(--rodando-suave); color: var(--primaria-texto); }
 .selo[data-estado="neutro"] { background: var(--neutro-suave); color: var(--texto-2); }
-.selo[data-estado="info"] { background: var(--acento-suave); color: var(--acento); }
+.selo[data-estado="info"] { background: var(--acento-suave); color: var(--acento-texto); }
 .selo[data-estado="rodando"] i { animation: girar 1.4s linear infinite; }
 
+/* Ponto de estado: além da cor, a FORMA conta (verde e vermelho têm a mesma
+   luminosidade; para quem tem daltonismo são o mesmo ponto). Círculo = deu
+   certo/neutro, quadrado = falhou, losango = atenção. */
 .ponto {
     display: inline-block;
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     background: var(--neutro);
     flex: none;
+    vertical-align: middle;
 }
 .ponto[data-estado="ok"] { background: var(--ok); }
-.ponto[data-estado="atencao"] { background: var(--atencao); }
-.ponto[data-estado="falha"] { background: var(--falha); }
+.ponto[data-estado="atencao"] { background: var(--atencao); border-radius: 1px; transform: rotate(45deg) scale(0.9); }
+.ponto[data-estado="falha"] { background: var(--falha); border-radius: 2px; }
 .ponto[data-estado="rodando"] { background: var(--rodando); box-shadow: 0 0 0 0 var(--rodando); animation: pulsar 1.6s infinite; }
 
 @keyframes girar { to { transform: rotate(360deg); } }
@@ -506,6 +518,7 @@ a.cartao:hover { text-decoration: none; border-color: var(--borda-forte); box-sh
     text-align: center;
 }
 .vazio i { font-size: 1.75rem; color: var(--texto-3); }
+.vazio i.bi-check2-circle { color: var(--ok); }  /* "tudo em dia" */
 .vazio strong { color: var(--texto); font-size: var(--fs-base); }
 .vazio p { margin: 0; max-width: 46ch; font-size: var(--fs-sm); }
 
@@ -681,7 +694,7 @@ dialog.dialogo[open] { animation: surgir var(--dur-media) var(--curva); }
     height: 20px;
     margin-left: var(--largura-rotulo-dia, 180px);
     color: var(--texto-3);
-    font-size: var(--fs-2xs);
+    font-size: var(--fs-xs);
 }
 .dia-regua span { position: absolute; transform: translateX(-50%); }
 .dia-trilha {
@@ -705,24 +718,61 @@ dialog.dialogo[open] { animation: surgir var(--dur-media) var(--curva); }
 }
 a.rotulo:hover { color: var(--primaria-texto); }
 .dia-trilha .pista { position: relative; height: 32px; }
+/* Marcador da linha do dia: cada estado tem FORMA própria, não só cor
+   (08-10-2026). Deu certo = círculo com visto; falhou = quadrado com X;
+   atrasado/não rodou = losango; rodando = anel aberto girando; previsto =
+   círculo vazio. Os glifos vêm da fonte do Bootstrap Icons (check-lg, x-lg). */
 .dia-evento {
     position: absolute;
     top: 50%;
-    width: 12px;
-    height: 12px;
-    margin-left: -6px;
-    margin-top: -6px;
+    display: grid;
+    place-items: center;
+    width: 14px;
+    height: 14px;
+    margin-left: -7px;
+    margin-top: -7px;
     border-radius: 50%;
-    border: 2px solid var(--superficie);
     background: var(--neutro);
-    box-shadow: 0 0 0 1px var(--borda-forte);
+    color: var(--sobre-estado);
+    box-shadow: 0 0 0 2px var(--superficie);
 }
-.dia-evento[data-estado="ok"] { background: var(--ok); box-shadow: none; }
-.dia-evento[data-estado="falha"] { background: var(--falha); box-shadow: none; }
-.dia-evento[data-estado="atencao"] { background: var(--atencao); box-shadow: none; }
-.dia-evento[data-estado="rodando"] { background: var(--rodando); box-shadow: none; animation: pulsar 1.6s infinite; }
-.dia-evento[data-estado="previsto"] { background: var(--superficie); box-shadow: 0 0 0 1px var(--borda-forte); }
-.dia-evento[data-estado="perdido"] { background: var(--superficie); box-shadow: 0 0 0 2px var(--atencao); }
+.dia-evento::after {
+    font-family: "bootstrap-icons";
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 700;
+}
+.dia-evento[data-estado="ok"] { background: var(--ok); }
+.dia-evento[data-estado="ok"]::after { content: "\F633"; }
+.dia-evento[data-estado="falha"] { background: var(--falha); border-radius: 3px; }
+.dia-evento[data-estado="falha"]::after { content: "\F659"; font-size: 8px; }
+.dia-evento[data-estado="atencao"],
+.dia-evento[data-estado="perdido"] {
+    width: 11px; height: 11px; margin-left: -5.5px; margin-top: -5.5px;
+    border-radius: 2px;
+    background: var(--atencao-suave);
+    box-shadow: 0 0 0 2px var(--atencao);
+    transform: rotate(45deg);
+}
+.dia-evento[data-estado="atencao"] { background: var(--atencao); }
+.dia-evento[data-estado="rodando"] {
+    background: transparent;
+    border: 3px solid var(--rodando);
+    border-right-color: transparent;
+    box-shadow: none;
+    animation: girar 1.1s linear infinite;
+}
+.dia-evento[data-estado="previsto"] {
+    width: 12px; height: 12px; margin-left: -6px; margin-top: -6px;
+    background: var(--superficie);
+    box-shadow: 0 0 0 1.5px var(--texto-3);
+}
+/* Marcador dentro da legenda (fora da pista): fica no fluxo do texto. */
+.dia-evento.na-legenda { position: relative; top: auto; display: inline-grid; margin: 0 var(--e-1) 0 0; vertical-align: -2px; animation: none; }
+.dia-evento.na-legenda[data-estado="perdido"] { margin: 0 var(--e-2) 0 var(--e-1); }
+.dia-legenda { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-1) var(--e-4); color: var(--texto-2); font-size: var(--fs-xs); }
+.dia-legenda > span { display: inline-flex; align-items: center; gap: var(--e-1); }
+@media (prefers-reduced-motion: reduce) { .dia-evento[data-estado="rodando"] { animation: none; } }
 .dia-faixa {
     position: absolute;
     top: 50%;
@@ -749,7 +799,7 @@ a.rotulo:hover { color: var(--primaria-texto); }
     padding: 0 var(--e-1);
     border-radius: var(--raio-sm);
     background: var(--acento);
-    color: #fff;
+    color: var(--sobre-acento);  /* branco sobre o laranja dava 2,7:1 */
     font-size: var(--fs-2xs);
     font-weight: var(--peso-forte);
 }
@@ -1042,3 +1092,70 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
 .quadro-vazio { margin: var(--e-2); }
 @media (max-width: 960px) { .quadro-vivo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .quadro-vivo { grid-template-columns: minmax(0, 1fr); } .quadro-coluna { min-height: 0; } }
+
+/* --------------------------------------------------------------------------
+   Tela Hoje (08-10-2026): o título vai para o topo, a manchete vira uma linha
+   de resumo sem cartão, os três números viram uma faixa ao lado dela e "O que
+   precisa de você" ganha a coluna larga — tudo que pede ação cabe na primeira
+   tela mesmo com 786 px de altura (zoom de 125%).
+   -------------------------------------------------------------------------- */
+.topo-titulo { margin: 0; font-size: var(--fs-lg); white-space: nowrap; }
+
+.hoje-topo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--e-4) var(--e-8);
+    margin-bottom: var(--e-6);
+}
+.manchete.manchete-lisa {
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+.manchete-lisa .texto { font-size: clamp(1.2rem, 1rem + 0.7vw, 1.5rem); max-width: 46ch; }
+.manchete-lisa .contexto { margin-top: var(--e-2); font-size: var(--fs-sm); }
+.manchete-lisa .rodape-manchete { margin-top: var(--e-2); }
+
+.kpis-faixa {
+    display: flex;
+    background: var(--superficie);
+    border: 1px solid var(--borda);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-1);
+}
+.kpis-faixa .kpi {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 14rem;
+    padding: var(--e-3) var(--e-5);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+.kpis-faixa .kpi + .kpi { border-left: 1px solid var(--borda); }
+.kpis-faixa .kpi-rotulo { font-size: var(--fs-xs); }
+.kpis-faixa .kpi-valor { font-size: 1.5rem; }
+
+.grade-hoje {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    gap: var(--e-4);
+    margin-bottom: var(--e-8);
+}
+
+@media (max-width: 1100px) {
+    .hoje-topo { grid-template-columns: minmax(0, 1fr); }
+    .kpis-faixa .kpi { max-width: none; }
+}
+@media (max-width: 900px) {
+    .grade-hoje { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+    .kpis-faixa .kpi { padding: var(--e-3); }
+}

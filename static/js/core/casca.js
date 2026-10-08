@@ -8,16 +8,19 @@ function lerTema() {
     try { return localStorage.getItem(CHAVE_TEMA) || 'sistema'; } catch (e) { return 'sistema'; }
 }
 
+// data-tema no <html> é sempre o tema EFETIVO ("claro" ou "escuro"): no modo
+// automático ("sistema") ele vem de prefers-color-scheme. tokens.css só tem o
+// bloco [data-tema="escuro"], então quem resolve o automático é o JS (aqui e
+// no script do <head> dos layouts, que roda antes de pintar).
 export function aplicarTema(tema) {
-    const raiz = document.documentElement;
-    if (tema === 'claro' || tema === 'escuro') raiz.dataset.tema = tema;
-    else delete raiz.dataset.tema;
+    const efetivo = tema === 'claro' || tema === 'escuro'
+        ? tema
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro');
+    document.documentElement.dataset.tema = efetivo;
     try { localStorage.setItem(CHAVE_TEMA, tema); } catch (e) { /* navegador sem armazenamento: vale só nesta página */ }
+    document.dispatchEvent(new CustomEvent('central:tema', { detail: { tema, efetivo } }));
     document.querySelectorAll('[data-tema-botao]').forEach((b) => {
         const icone = b.querySelector('i');
-        const efetivo = tema === 'sistema'
-            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro')
-            : tema;
         if (icone) icone.className = `bi bi-${efetivo === 'escuro' ? 'moon-stars' : 'sun'}`;
         b.setAttribute('aria-label', `Tema: ${tema === 'sistema' ? 'automático' : tema}. Clique para trocar.`);
         b.title = `Tema ${tema === 'sistema' ? 'automático (do sistema)' : tema}`;
