@@ -17,6 +17,9 @@ const SITUACAO_TEXTO = { problema: 'com problema', rodando: 'rodando agora', ok:
 const filtros = lerFiltros(PADROES);
 let dados = null;
 let grafico = null;
+// Cartões virados (mostrando o que o robô faz). Guardado aqui para a
+// atualização de cada minuto não desvirar o cartão de ninguém.
+const virados = new Set();
 
 // API na Central; arquivo JSON no site estático (GitHub Pages). O `t=`
 // fura o cache do Pages (~10 min) para pegar a última publicação.
@@ -367,23 +370,36 @@ function desenharRobos(lista) {
         const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
         const [estado, etiqueta] = situacaoDoRobo(r, ok + falhas);
         const quando = r.rodando ? 'em execução agora' : (r.ultima_execucao_em ? `última ${relativo(r.ultima_execucao_em)}` : 'nunca rodou');
-        // Bloco objetivo (09-10-2026): o que o robô faz numa frase, sempre à
-        // vista (antes ficava atrás de um toque), e o resultado do período no
-        // anel + em palavras.
-        return html`<li><article class="robo-bloco" data-estado="${estado}" aria-labelledby="robo-${r.id}">
+        // Cartão que vira (09-10-2026, pedido do responsável): a FRENTE fica só
+        // com a situação, o nome e o anel grande; o VERSO, com o que o robô faz.
+        const frente = html`<span class="robo-face robo-bloco" data-estado="${estado}">
             <span class="robo-bloco-topo">
                 <span class="robo-etiqueta" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span>${etiqueta}</span>
-                <span class="robo-seguradora">${seguradorasDoRobo(r)}</span>
+                <span class="robo-seguradora">${seguradorasDoRobo(r)}${r.resumo ? html` <i class="bi bi-arrow-repeat robo-dica-icone" title="Toque para ver o que faz" aria-hidden="true"></i>` : ''}</span>
             </span>
-            <span class="robo-bloco-texto">
-                <h3 class="robo-bloco-nome" id="robo-${r.id}">${r.nome}</h3>
-                ${r.resumo ? html`<span class="robo-bloco-resumo">${r.resumo}</span>` : ''}
-            </span>
+            <span class="robo-bloco-nome">${r.nome}</span>
             <span class="robo-bloco-pe">
                 <span class="robo-anel">${anel(tx, est)}<span class="robo-anel-valor">${tx === null ? '—' : percentual(tx)}</span></span>
                 <span class="robo-bloco-numeros"><strong>${textoExecucoes(ok, falhas)}</strong><span>${quando}</span></span>
             </span>
-        </article></li>`;
+        </span>`;
+        const resultado = `${etiqueta}; ${textoExecucoes(ok, falhas).toLowerCase()}; ${quando}.`;
+        if (!r.resumo) {
+            return html`<li><div class="robo-cartao" role="group" aria-label="${r.nome}: ${resultado}"><span class="robo-miolo">${frente}</span></div></li>`;
+        }
+        const virado = virados.has(r.id);
+        return html`<li><button type="button" class="robo-cartao" data-vira="${r.id}" aria-pressed="${String(virado)}"
+                aria-label="${virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}: ${resultado} Toque para ver o que ele faz.`}">
+            <span class="robo-miolo">
+                ${frente}
+                <span class="robo-face robo-verso robo-bloco" data-estado="${estado}" aria-hidden="${String(!virado)}">
+                    <span class="robo-verso-rotulo">O que faz</span>
+                    <span class="robo-bloco-nome">${r.nome}</span>
+                    <span class="robo-verso-texto">${r.resumo}</span>
+                    <span class="robo-dica"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> toque para voltar</span>
+                </span>
+            </span>
+        </button></li>`;
     }));
 }
 
@@ -435,6 +451,20 @@ async function carregar() {
 }
 
 ['periodo', 'tipo', 'situacao'].forEach((chave) => ligarSegmentado(`[data-filtro="${chave}"]`, filtros, chave, aoMudarFiltro));
+// Virar o cartão: clique/toque, ou Enter/Espaço (é um <button>). Só troca as
+// classes, sem redesenhar a tela (a animação de virar aparece).
+$('#lista-robos').addEventListener('click', (ev) => {
+    const el = ev.target.closest('[data-vira]');
+    if (!el) return;
+    const id = Number(el.dataset.vira);
+    const virado = !virados.has(id);
+    if (virado) virados.add(id); else virados.delete(id);
+    const r = dados.robos.find((x) => x.id === id);
+    el.setAttribute('aria-pressed', String(virado));
+    el.querySelector('.robo-verso').setAttribute('aria-hidden', String(!virado));
+    if (r) el.setAttribute('aria-label', virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}. Toque para ver o que ele faz.`);
+});
+
 $('#filtro-seguradora').addEventListener('change', (ev) => { filtros.seguradora = ev.target.value; aoMudarFiltro(); });
 $('#limpar-filtros').addEventListener('click', () => {
     Object.assign(filtros, PADROES);
