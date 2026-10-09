@@ -1168,6 +1168,20 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
     margin-bottom: var(--e-8);
 }
 
+/* Hoje: quem está com a Central aberta agora (foto + nome, em linha). */
+.pessoas-online {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-2) var(--e-3);
+    margin: 0 0 var(--e-4); font-size: var(--fs-sm);
+}
+.pessoas-online:empty { display: none; }
+.ponto-online { color: var(--ok); font-size: 0.55rem; }
+.pessoa-online { display: inline-flex; align-items: center; gap: var(--e-2); }
+.avatar-online {
+    width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; flex: none;
+    background: var(--acento-suave); color: var(--acento); font-size: var(--fs-xs); font-weight: var(--peso-forte);
+}
+.avatar-online img { width: 100%; height: 100%; object-fit: cover; }
+
 /* Estado vazio dentro dos quadros de Hoje: mais baixo (era ~270 px de altura
    para dizer "nada precisa de você"). */
 .grade-hoje .vazio { padding: var(--e-6) var(--e-5); }
