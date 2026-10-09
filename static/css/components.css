@@ -1069,8 +1069,104 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
     .painel-grafico { height: 220px; }
 }
 
-/* Abas Painel ao vivo / Quadro ao vivo (topo das telas sem login) */
-@media (max-width: 640px) { .abas-publicas a i { display: none; } }
+/* Abas das telas sem login em DOIS ASSUNTOS (09-10-2026): "Robôs" em ciano
+   (Ao vivo, O que vem por aí) e "Negócio" no laranja da marca (Resultado do
+   mês). A cor marca o ASSUNTO, nunca estado: estado continua verde/vermelho.
+   Usado também pelo dashboard da Akad, que carrega este arquivo. */
+.abas-publicas { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-2); min-width: 0; }
+.abas-grupo {
+    --cor-assunto: var(--primaria-texto);
+    --fundo-assunto: var(--primaria-suave);
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px 3px 3px var(--e-3);
+    border: 1px solid color-mix(in srgb, var(--cor-assunto) 35%, var(--borda));
+    border-radius: var(--raio-md);
+    background: var(--superficie);
+}
+.abas-grupo[data-assunto="negocio"] { --cor-assunto: var(--acento-texto); --fundo-assunto: var(--acento-suave); }
+.abas-grupo-nome {
+    margin-right: var(--e-1);
+    color: var(--cor-assunto);
+    font-size: var(--fs-2xs);
+    font-weight: var(--peso-titulo);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.abas-grupo a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-1);
+    min-height: 36px;
+    padding: 0 var(--e-3);
+    border-radius: var(--raio-sm);
+    color: var(--texto-2);
+    font-size: var(--fs-sm);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.abas-grupo a:hover { background: var(--superficie-2); color: var(--texto); }
+.abas-grupo a[aria-current="page"] { background: var(--fundo-assunto); color: var(--texto); font-weight: var(--peso-forte); }
+/* Até 760px as abas descem para a linha de baixo do logo (antes cobriam o
+   "Central de Robôs"). */
+@media (max-width: 760px) {
+    .simples-topo:has(.abas-publicas) { flex-wrap: wrap; }
+    .simples-topo .acoes:has(.abas-publicas) { margin-left: 0; width: 100%; justify-content: space-between; }
+}
+@media (max-width: 640px) {
+    .abas-publicas a i { display: none; }
+    .abas-grupo a { padding: 0 var(--e-2); }
+}
+
+/* Etiqueta do assunto + a pergunta da tela, no topo da manchete pública. */
+.assunto-tela { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-2) var(--e-3); margin: 0 0 var(--e-3); }
+.assunto-etiqueta {
+    padding: 3px var(--e-3);
+    border-radius: var(--raio-pilula);
+    background: var(--primaria-suave);
+    color: var(--primaria-texto);
+    font-size: var(--fs-2xs);
+    font-weight: var(--peso-titulo);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.assunto-tela[data-assunto="negocio"] .assunto-etiqueta { background: var(--acento-suave); color: var(--acento-texto); }
+.assunto-pergunta { color: var(--texto-3); font-size: var(--fs-sm); }
+
+/* Robô por robô (09-10-2026): duas colunas que NÃO esticam — antes cada
+   cartão tomava a altura do vizinho mais alto e Fator/Mapfre ficavam com
+   metade vazia. */
+.grade-robos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: var(--e-4); align-items: start; }
+/* O verso só ocupa altura quando está virado: a linha fica do tamanho da
+   frente (antes a descrição longa do verso inflava todas as linhas). */
+.painel-robo:not([aria-pressed="true"]) .painel-robo-verso { height: 0; overflow: hidden; }
+.painel-robo .lista-itens > .item, .grade-robos .item { padding-top: var(--e-3); padding-bottom: var(--e-3); }
+
+/* Rodapé das telas públicas: hora dos dados + link para o outro assunto. */
+.rodape-publico { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--e-2) var(--e-5); margin-top: var(--e-6); padding-top: var(--e-4); border-top: 1px solid var(--borda); color: var(--texto-3); font-size: var(--fs-xs); }
+.rodape-publico .links { display: flex; flex-wrap: wrap; gap: var(--e-2) var(--e-5); }
+.rodape-publico a[data-assunto="negocio"] { color: var(--acento-texto); }
+
+/* O que vem por aí (09-10-2026): a esteira de 4 etapas no topo — etapa vazia
+   fica pequena — e o que está em produção agrupado por tipo de trabalho. */
+.esteira { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
+.esteira-etapa { display: grid; gap: 2px; padding: var(--e-3) var(--e-4); border: 1px dashed var(--borda-forte); border-radius: var(--raio-md); }
+.esteira-etapa[data-cheia="sim"] { border-style: solid; background: var(--superficie); }
+.esteira-etapa[data-coluna="em_producao"][data-cheia="sim"] { border-color: color-mix(in srgb, var(--ok) 55%, var(--borda)); }
+.esteira-etapa .topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-2); font-weight: var(--peso-forte); font-size: var(--fs-sm); }
+.esteira-etapa .topo i { color: var(--texto-3); margin-right: var(--e-1); }
+.esteira-etapa p { margin: 0; color: var(--texto-3); font-size: var(--fs-xs); }
+.esteira-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: var(--e-3); margin-top: var(--e-3); }
+.producao-tipo + .producao-tipo { margin-top: var(--e-6); }
+.producao-tipo > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--e-1) var(--e-3); padding-bottom: var(--e-2); border-bottom: 1px solid var(--borda); }
+.producao-tipo > header h3 { margin: 0; font-size: var(--fs-base); }
+.producao-tipo > header span { color: var(--texto-3); font-size: var(--fs-sm); }
+.cartao-producao { display: grid; gap: var(--e-1); padding: var(--e-3) var(--e-4); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-md); }
+.cartao-producao .topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-2); }
+.cartao-producao strong { font-size: var(--fs-sm); }
+.cartao-producao .nome, .cartao-producao .quando { color: var(--texto-3); font-size: var(--fs-xs); }
+@media (max-width: 760px) { .esteira { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Quadro ao vivo (quadro_publico.html) */
 .quadro-vivo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e-4); }

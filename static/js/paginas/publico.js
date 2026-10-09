@@ -46,7 +46,10 @@ async function obterDados() {
 
 // --- Dados do recorte -----------------------------------------------------------
 const chaveSeguradora = (s) => s.trim().toUpperCase();
-const nomeSeguradora = (s) => s.toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase());
+// Um nome curto por seguradora, igual nas três telas públicas (09-10-2026:
+// o Painel dizia "Porto Seguros" e "Tokio Marine", o Resultado "Porto" e "Tokio").
+const NOMES_CURTOS = { 'PORTO SEGUROS': 'Porto', 'PORTO SEGURO': 'Porto', 'TOKIO MARINE': 'Tokio' };
+const nomeSeguradora = (s) => NOMES_CURTOS[chaveSeguradora(s)] || s.trim().toLowerCase().replace(/(^|\s)\S/g, (l) => l.toUpperCase());
 
 function seguradorasDisponiveis() {
     const mapa = new Map();
@@ -146,6 +149,9 @@ function tendencia(delta, { pontos = false, bomQuandoSobe = true } = {}) {
     return html`<span class="tendencia" data-direcao="${sobe ? 'sobe' : 'desce'}" data-bom="${bom}"><i class="bi bi-arrow-${sobe ? 'up' : 'down'}-right"></i>${pontos ? plural(Math.abs(valor), 'ponto', 'pontos') : `${Math.abs(valor)}%`} ${sobe ? 'acima' : 'abaixo'} ${textoVs()}</span>`;
 }
 
+// Manchete (09-10-2026): começa pela RESPOSTA — quantos pedem atenção e
+// quantos estão em dia —, só com as cores de estado (vermelho/verde). O
+// volume e a taxa de acerto vêm depois, no contexto.
 function desenharManchete(lista, totais, atencao) {
     const [ok, falhas] = totais.atual;
     const execs = ok + falhas;
@@ -156,21 +162,36 @@ function desenharManchete(lista, totais, atencao) {
         return;
     }
     const taxa = taxaDe(totais.atual);
-    const estadoTaxa = taxa === null ? '' : (taxa >= 0.9 ? 'ok' : (taxa >= 0.7 ? 'atencao' : 'falha'));
-    const abertura = execs
-        ? html`${textoPeriodo()}, ${textoEscopo(lista)} ${lista.length === 1 ? 'rodou' : 'rodaram'} <em>${plural(execs, 'vez', 'vezes')}</em> e <span class="destaque-${estadoTaxa}">${percentual(taxa)} deu certo</span>.`
-        : html`${textoPeriodo()}, ${lista.length === 1 ? `o robô ${lista[0].nome} ainda não rodou` : `nenhum d${textoEscopo(lista)} rodou`}.`;
-    montar('#manchete-texto', html`${abertura} ${atencao.length
-        ? html`<span class="destaque-falha">${plural(atencao.length, 'pede', 'pedem')} atenção</span>: <em>${atencao[0].robo.nome}</em>${atencao.length > 1 ? ` e mais ${atencao.length - 1}` : ''}.`
-        : html`<span class="destaque-ok">${lista.length === 1 ? 'Não pede' : 'Nenhum pede'} atenção.</span>`}`);
+    const emDia = lista.length - atencao.length;
+    const umSo = lista.length === 1;
+    let texto;
+    if (umSo) {
+        texto = atencao.length
+            ? html`${textoPeriodo()}, <span class="destaque-falha">${lista[0].nome} pede atenção</span>.`
+            : html`${textoPeriodo()}, <span class="destaque-ok">${lista[0].nome} está em dia</span>.`;
+    } else if (!atencao.length) {
+        texto = html`${textoPeriodo()}, <span class="destaque-ok">${textoEscopo(lista)} estão em dia</span>. Nenhum pede atenção.`;
+    } else {
+        texto = html`${textoPeriodo()}, <span class="destaque-falha">${atencao.length} de ${lista.length} robôs ${atencao.length === 1 ? 'pede' : 'pedem'} atenção</span>.${emDia
+            ? html` ${emDia === 1 ? 'O outro está' : `Os outros ${emDia} estão`} <span class="destaque-ok">em dia</span>.` : ''}`;
+    }
+    montar('#manchete-texto', texto);
 
+    // Quem pede atenção, pelo nome (até 2), e o volume do período.
+    const nomes = atencao.slice(0, 2).map((a) => a.robo.nome);
+    const quem = atencao.length
+        ? `${atencao.length === 1 ? 'É' : 'São'} ${nomes.join(' e ')}${atencao.length > 2 ? ` e mais ${atencao.length - 2}` : ''}. `
+        : '';
+    const volume = execs
+        ? `${plural(execs, 'execução', 'execuções')}${taxa === null ? '' : `, ${percentual(taxa)} deram certo`}`
+        : 'Nenhuma execução no período';
     const [okAnt, falhasAnt] = totais.anterior;
     const execsAnt = okAnt + falhasAnt;
     let contexto;
     if (!execsAnt) {
-        contexto = `Não houve execução ${textoAnterior()} para comparar.`;
+        contexto = `${volume}. Não houve execução ${textoAnterior()} para comparar.`;
     } else if (!execs) {
-        contexto = `${textoAnterior().charAt(0).toUpperCase()}${textoAnterior().slice(1)} foram ${plural(execsAnt, 'execução', 'execuções')}.`;
+        contexto = `${volume}; ${textoAnterior()} foram ${plural(execsAnt, 'execução', 'execuções')}.`;
     } else {
         const v = variacao(execs, execsAnt);
         const ritmo = Math.round(v * 100) === 0 ? `o mesmo ritmo de ${textoAnterior()}`
@@ -181,9 +202,9 @@ function desenharManchete(lista, totais, atencao) {
             const pts = Math.round((taxa - taxaAnt) * 100);
             qualidade = pts === 0 ? ', com a mesma taxa de acerto' : `, e a taxa de acerto ${pts > 0 ? 'subiu' : 'caiu'} ${plural(Math.abs(pts), 'ponto', 'pontos')}`;
         }
-        contexto = `São ${ritmo}${qualidade}.`;
+        contexto = `${volume}: ${ritmo}${qualidade}.`;
     }
-    $('#manchete-contexto').textContent = contexto;
+    $('#manchete-contexto').textContent = `${quem}${contexto}`;
     const rodando = lista.filter((r) => r.rodando);
     // Pausa dos robôs (notebook fora da empresa): só desde quando, sem nome.
     montar('#manchete-rodape', html`
@@ -302,8 +323,13 @@ function grupos(lista) {
             mapa.get(chave).robos.push(r);
         });
     });
-    const saida = [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-    if (internos.length) saida.push({ nome: 'Sistemas nossos', robos: internos });
+    // Quem pede atenção sobe: primeiro dentro do grupo, depois o grupo inteiro
+    // (09-10-2026). "Sistemas nossos" fica sempre por último.
+    const pesa = (r) => (r.travado || motivosAtencao(r).length ? 0 : 1);
+    const ordenar = (g) => ({ ...g, robos: g.robos.slice().sort((a, b) => pesa(a) - pesa(b)), problemas: g.robos.filter((r) => !pesa(r)).length });
+    const saida = [...mapa.values()].map(ordenar)
+        .sort((a, b) => (b.problemas > 0) - (a.problemas > 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
+    if (internos.length) saida.push(ordenar({ nome: 'Sistemas nossos', robos: internos }));
     return saida;
 }
 
