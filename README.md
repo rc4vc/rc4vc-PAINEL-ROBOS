@@ -7,6 +7,8 @@ publicação sobrescreve.
 - `index.html`: Painel ao vivo (história dos robôs, com filtros).
 - `kanban/`: Kanban (o que está sendo automatizado). `quadro/`
   só leva ao endereço novo (era o endereço até 02-10-2026).
+- `resultado/`: Resultado do mês (produção, comissão e metas), o dashboard
+  que o robô da Akad gera; aqui vai o mais recente.
 - `dados/`: os números que as duas telas leem.
 
 Só dados que podem ser públicos: nomes dos robôs, seguradoras, contagens e
