@@ -84,58 +84,31 @@ function desenharManchete(q) {
     ].filter(Boolean).join(' ');
 }
 
-// Cartão que vira (09-10-2026), no mesmo padrão do Robô por robô do Painel ao
-// vivo: a FRENTE tem a etiqueta, o nome e um número em destaque (há quantos
-// dias está em produção); o VERSO, o que a automação faz.
-// Cartões virados: guardado aqui para a atualização de cada minuto não
-// desvirar o cartão de ninguém.
-const virados = new Set();
-const chaveCartao = (c) => (c.rpa_id ? `rpa-${c.rpa_id}` : `c-${c.id}`);
+// Identidade própria do Kanban (09-10-2026, pedido do responsável: "mais
+// simples e objetiva"): um QUADRO DE LISTAS — um cartão por tipo de trabalho,
+// uma linha por automação (nome, seguradora, desde quando). Sem anel e sem
+// cartão que vira, que são do Painel ao vivo. A descrição pública fica no
+// título da linha (passar o mouse).
 const ETAPA_TEXTO = { planejado: 'Planejado', em_desenvolvimento: 'Em desenvolvimento', pronto_para_testar: 'Pronto para testar' };
+const dataCurta = (iso) => new Date(`${String(iso).replace(/Z$/, '')}Z`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-/** [estado, etiqueta, número do anel, legenda do anel, frase ao lado]. */
-function resumoCartao(c) {
-    if (c.etapa) {
-        const dias = Math.max(0, Math.floor(diasDesde(c.atualizado_em)));
-        return ['rodando', ETAPA_TEXTO[c.etapa], dias, dias === 1 ? 'dia' : 'dias', `atualizada ${relativo(c.atualizado_em)}`];
-    }
-    const dias = Math.max(0, Math.floor(diasDesde(c.criado_em)));
-    const legenda = dias === 1 ? 'dia' : 'dias';
-    if (!c.rpa_id) return ['neutro', 'Ferramenta', dias, legenda, `atualizada ${relativo(c.atualizado_em)}`];
-    return novo(c) ? ['ok', 'Novo', dias, legenda, 'entrou nos últimos 15 dias'] : ['neutro', 'Em produção', dias, legenda, 'roda sozinho'];
+function quandoDaLinha(c) {
+    if (c.etapa) return ETAPA_TEXTO[c.etapa];
+    if (!c.rpa_id) return `atualizada ${relativo(c.atualizado_em)}`;
+    return `desde ${dataCurta(c.criado_em)}`;
 }
 
-const cartao = (c) => {
-    const [estado, etiqueta, numero, legenda, frase] = resumoCartao(c);
-    const frente = html`<span class="robo-face robo-bloco" data-estado="${estado === 'rodando' ? 'rodando' : ''}">
-        <span class="robo-bloco-topo">
-            <span class="robo-etiqueta" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span>${etiqueta}</span>
-            <span class="robo-seguradora">${seguradoraCurta(c.seguradora)}${c.descricao ? html` <i class="bi bi-arrow-repeat robo-dica-icone" title="Toque para ver o que faz" aria-hidden="true"></i>` : ''}</span>
-        </span>
-        <span class="robo-bloco-nome">${c.tipo_rpa}</span>
-        <span class="robo-bloco-pe">
-            <span class="robo-anel kanban-anel" data-estado="${estado}"><span class="robo-anel-valor"><strong>${numero}</strong><small>${legenda}</small></span></span>
-            <span class="robo-bloco-numeros"><strong>${c.etapa ? `${numero} ${legenda} nesta etapa` : `${numero} ${legenda} em produção`}</strong><span>${frase}</span></span>
-        </span>
-    </span>`;
-    if (!c.descricao) {
-        return html`<li><div class="robo-cartao" role="group" aria-label="${c.tipo_rpa}: ${etiqueta}"><span class="robo-miolo">${frente}</span></div></li>`;
-    }
-    const chave = chaveCartao(c);
-    const virado = virados.has(chave);
-    return html`<li><button type="button" class="robo-cartao" data-vira="${chave}" data-nome="${c.tipo_rpa}" data-resumo="${c.descricao}" aria-pressed="${String(virado)}"
-            aria-label="${virado ? `${c.tipo_rpa}: ${c.descricao} Toque para voltar.` : `${c.tipo_rpa}: ${etiqueta}. Toque para ver o que faz.`}">
-        <span class="robo-miolo">
-            ${frente}
-            <span class="robo-face robo-verso robo-bloco" aria-hidden="${String(!virado)}">
-                <span class="robo-verso-rotulo">O que faz</span>
-                <span class="robo-bloco-nome">${c.tipo_rpa}</span>
-                <span class="robo-verso-texto">${c.descricao}</span>
-                <span class="robo-dica"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> toque para voltar</span>
-            </span>
-        </span>
-    </button></li>`;
-};
+const linha = (c) => html`<li class="kanban-linha" title="${c.descricao || ''}">
+    <span class="ponto" data-estado="${c.etapa ? 'rodando' : (novo(c) ? 'ok' : 'neutro')}" aria-hidden="true"></span>
+    <span class="kanban-nome">${c.tipo_rpa}${novo(c) && !c.etapa ? html` <span class="kanban-novo">novo</span>` : ''}</span>
+    <span class="kanban-seg">${seguradoraCurta(c.seguradora)}</span>
+    <span class="kanban-quando" title="${c.rpa_id ? `entrou ${relativo(c.criado_em)}` : ''}">${quandoDaLinha(c)}</span>
+</li>`;
+
+const cartaoLista = (titulo, oque, itens) => html`<section class="kanban-tipo" aria-label="${titulo}">
+    <header><h3>${titulo}</h3><span class="selo" data-estado="neutro">${itens.length}</span>${oque ? html`<p>${oque}</p>` : ''}</header>
+    <ul class="kanban-lista">${itens.map(linha)}</ul>
+</section>`;
 
 function desenharQuadro(q) {
     // 1. A esteira: etapa vazia fica pequena (antes 3 colunas vazias ocupavam
@@ -147,17 +120,17 @@ function desenharQuadro(q) {
             <p>${frase}${qtd ? '' : ' Nada agora.'}</p>
         </li>`;
     }));
-    // O que está andando aparece em cartões, logo abaixo da esteira.
+    // O que está andando aparece numa lista, logo abaixo da esteira.
     const andando = ['planejado', 'em_desenvolvimento', 'pronto_para_testar'].flatMap((k) => recentes(q[k] || []).map((c) => ({ ...c, etapa: k })));
-    montar('#andando', andando.length ? html`<ul class="robos-blocos esteira-andando">${andando.map(cartao)}</ul>` : '');
+    montar('#andando', andando.length ? html`<div class="kanban-tipos esteira-andando">${cartaoLista('Em andamento', 'da ideia ao teste', andando)}</div>` : '');
 
     // 2. Em produção, por tipo de trabalho.
     const producao = recentes(q.em_producao || []);
     const grupos = TIPOS.map(([chave, titulo, oque]) => ({ chave, titulo, oque, itens: producao.filter((c) => tipoDe(c) === chave) }))
         .filter((g) => g.itens.length);
-    // Uma grade só, já ordenada por tipo (09-10-2026): grupos com 1 ou 2
-    // cartões deixavam fileiras quase vazias e esticavam a tela.
-    montar('#producao', html`<ul class="robos-blocos">${grupos.flatMap((g) => g.itens).map(cartao)}</ul>`);
+    // Um cartão de lista por tipo, em colunas corridas: cada cartão encaixa
+    // logo abaixo do anterior, sem fileira vazia.
+    montar('#producao', html`<div class="kanban-tipos">${grupos.map((g) => cartaoLista(g.titulo, g.oque, g.itens))}</div>`);
 }
 
 async function carregar() {
@@ -171,18 +144,5 @@ async function carregar() {
     desenharManchete(q);
     desenharQuadro(q);
 }
-
-// Virar o cartão: clique/toque, ou Enter/Espaço (é um <button>). Só troca os
-// atributos, sem redesenhar (a animação de virar aparece).
-document.addEventListener('click', (ev) => {
-    const el = ev.target.closest('#producao [data-vira], #andando [data-vira]');
-    if (!el) return;
-    const chave = el.dataset.vira;
-    const virado = !virados.has(chave);
-    if (virado) virados.add(chave); else virados.delete(chave);
-    el.setAttribute('aria-pressed', String(virado));
-    el.querySelector('.robo-verso').setAttribute('aria-hidden', String(!virado));
-    el.setAttribute('aria-label', virado ? `${el.dataset.nome}: ${el.dataset.resumo} Toque para voltar.` : `${el.dataset.nome}. Toque para ver o que faz.`);
-});
 
 aCada(60_000, carregar, { rotulo: '#ultima-atualizacao' });

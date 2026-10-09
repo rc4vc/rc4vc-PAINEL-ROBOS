@@ -1171,14 +1171,22 @@ button.robo-cartao:focus-visible .robo-face { outline: 2px solid var(--primaria)
 .robo-dica-icone { color: var(--texto-3); font-size: var(--fs-xs); }
 button.robo-cartao:hover .robo-dica-icone { color: var(--primaria-texto); }
 @media (prefers-reduced-motion: reduce) { .robo-miolo { transition: none; } }
-/* O que vem por aí (09-10-2026): o mesmo cartão que vira, com um anel cheio
-   que mostra há quantos dias a automação está em produção (ou na etapa). */
-.kanban-anel { display: grid; place-items: center; border: 4.5px solid var(--borda-forte); border-radius: 50%; box-sizing: border-box; }
-.kanban-anel[data-estado="ok"] { border-color: var(--ok); }
-.kanban-anel[data-estado="rodando"] { border-color: var(--rodando); }
-.kanban-anel .robo-anel-valor { position: static; display: grid; gap: 0; line-height: 1.05; text-align: center; }
-.kanban-anel .robo-anel-valor strong { font-size: var(--fs-lg); font-weight: var(--peso-titulo); }
-.kanban-anel .robo-anel-valor small { color: var(--texto-3); font-size: var(--fs-2xs); font-weight: var(--peso-medio); }
+/* O que vem por aí com identidade própria (09-10-2026): quadro de listas —
+   um cartão por tipo de trabalho, uma linha por automação. Colunas corridas
+   (cada cartão encaixa abaixo do anterior). */
+.kanban-tipos { columns: 2 480px; column-gap: var(--e-4); }
+.kanban-tipo { break-inside: avoid; margin: 0 0 var(--e-4); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-lg); box-shadow: var(--sombra-1); overflow: hidden; }
+.kanban-tipo > header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--e-2); padding: var(--e-3) var(--e-4); background: var(--superficie-2); border-bottom: 1px solid var(--borda); }
+.kanban-tipo > header h3 { margin: 0; font-size: var(--fs-base); }
+.kanban-tipo > header p { grid-column: 1 / -1; margin: 2px 0 0; color: var(--texto-3); font-size: var(--fs-xs); }
+.kanban-lista { margin: 0; padding: 0; list-style: none; }
+.kanban-linha { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--e-3); padding: var(--e-2) var(--e-4); border-bottom: 1px solid var(--borda); font-size: var(--fs-sm); }
+.kanban-linha:last-child { border-bottom: 0; }
+.kanban-nome { min-width: 0; overflow: hidden; font-weight: var(--peso-forte); text-overflow: ellipsis; white-space: nowrap; }
+.kanban-novo { margin-left: var(--e-1); padding: 1px var(--e-2); border-radius: var(--raio-pilula); background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); font-size: var(--fs-2xs); font-weight: var(--peso-titulo); text-transform: uppercase; letter-spacing: 0.04em; }
+.kanban-seg { color: var(--texto-2); white-space: nowrap; }
+.kanban-quando { min-width: 6.5em; color: var(--texto-3); font-size: var(--fs-xs); text-align: right; white-space: nowrap; }
+@media (max-width: 560px) { .kanban-linha { grid-template-columns: auto minmax(0, 1fr) auto; } .kanban-seg { display: none; } }
 .esteira-andando { margin-top: var(--e-4); }
 
 .robo-bloco {
