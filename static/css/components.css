@@ -1101,6 +1101,40 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
     .abas-grupo a { padding: 0 var(--e-2); }
 }
 
+/* Banner do topo das telas públicas mais baixo (09-10-2026, pedido do
+   responsável): tinha 319 px e empurrava "Quem precisa de atenção" para o
+   fim da primeira tela. Só no Painel ao vivo e no Kanban (.painel-vivo); o
+   Resultado do mês, que também usa .manchete, fica como está. */
+.painel-vivo .manchete { padding: var(--e-5) var(--e-6); margin-bottom: var(--e-5); }
+.painel-vivo .manchete .texto { font-size: clamp(1.25rem, 1rem + 0.9vw, 1.75rem); max-width: 62ch; }
+.painel-vivo .manchete .contexto { margin-top: var(--e-2); font-size: var(--fs-sm); max-width: none; }
+.painel-vivo .manchete .rodape-manchete { margin-top: var(--e-3); }
+.painel-vivo .assunto-tela { margin-bottom: var(--e-2); }
+
+/* Página toda mais compacta (09-10-2026, pedido do responsável): menos
+   respiro em cada bloco do Painel ao vivo e do Kanban. Tudo escopado em
+   .painel-vivo — o Resultado do mês, que carrega este mesmo arquivo, não
+   muda. */
+body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: var(--e-3); }
+.painel-vivo .painel-filtros { gap: var(--e-2) var(--e-4); padding: var(--e-3) var(--e-4); margin-bottom: var(--e-4); }
+.painel-vivo .painel-filtros .segmentado button { min-height: 28px; }
+.painel-vivo .painel-recorte { flex-basis: auto; margin-left: auto; padding-top: 0; border-top: 0; }
+.painel-vivo .grade-4.mb-6 { margin-bottom: var(--e-5); }
+.painel-vivo .kpi { gap: 2px; padding: var(--e-3) var(--e-4); }
+.painel-vivo .kpi-valor { font-size: clamp(1.4rem, 1.15rem + 0.8vw, 1.9rem); }
+.painel-vivo .capitulo { margin-bottom: var(--e-6); }
+.painel-vivo .capitulo-cabecalho { gap: var(--e-3); margin-bottom: var(--e-3); }
+.painel-vivo .capitulo-cabecalho h2 { margin: 0 0 2px; }
+.painel-vivo .capitulo-numero { width: 26px; height: 26px; }
+.painel-vivo .frase-historia { margin-bottom: var(--e-3); font-size: var(--fs-sm); }
+.painel-vivo .lista-itens .item { padding: var(--e-2) var(--e-4); }
+.painel-vivo .item-icone { width: 30px; height: 30px; }
+.painel-vivo .robos-blocos { gap: var(--e-3); }
+.painel-vivo .robo-bloco { padding: var(--e-4); gap: var(--e-2); }
+.painel-vivo .painel-grafico { height: 220px; }
+.painel-vivo .esteira-etapa { padding: var(--e-2) var(--e-3); }
+.painel-vivo .rodape-publico { margin-top: var(--e-4); padding-top: var(--e-3); }
+
 /* Etiqueta do assunto + a pergunta da tela, no topo da manchete pública. */
 .assunto-tela { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-2) var(--e-3); margin: 0 0 var(--e-3); }
 .assunto-etiqueta {
