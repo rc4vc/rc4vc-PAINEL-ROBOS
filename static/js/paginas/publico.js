@@ -17,8 +17,8 @@ const SITUACAO_TEXTO = { problema: 'com problema', rodando: 'rodando agora', ok:
 const filtros = lerFiltros(PADROES);
 let dados = null;
 let grafico = null;
-// Robôs com o cartão virado (mostrando o que fazem). Fica guardado aqui
-// para a atualização de cada minuto não desvirar o cartão de ninguém.
+// Robôs com o "o que faz" aberto na tabela. Fica guardado aqui para a
+// atualização de cada minuto não fechar o de ninguém.
 const virados = new Set();
 
 // API na Central; arquivo JSON no site estático (GitHub Pages). O `t=`
@@ -311,26 +311,22 @@ function desenharAtencao(atencao) {
         </div>`)}</div></div>`);
 }
 
-function grupos(lista) {
-    const mapa = new Map();
-    const internos = [];
-    lista.forEach((r) => {
-        if (r.sistema_nosso) { internos.push(r); return; }
-        (r.seguradoras.length ? r.seguradoras : ['Sem seguradora']).forEach((s) => {
-            const chave = chaveSeguradora(s);
-            if (filtros.seguradora && filtros.seguradora !== SISTEMAS && chave !== filtros.seguradora) return;
-            if (!mapa.has(chave)) mapa.set(chave, { nome: nomeSeguradora(s), robos: [] });
-            mapa.get(chave).robos.push(r);
-        });
-    });
-    // Quem pede atenção sobe: primeiro dentro do grupo, depois o grupo inteiro
-    // (09-10-2026). "Sistemas nossos" fica sempre por último.
-    const pesa = (r) => (r.travado || motivosAtencao(r).length ? 0 : 1);
-    const ordenar = (g) => ({ ...g, robos: g.robos.slice().sort((a, b) => pesa(a) - pesa(b)), problemas: g.robos.filter((r) => !pesa(r)).length });
-    const saida = [...mapa.values()].map(ordenar)
-        .sort((a, b) => (b.problemas > 0) - (a.problemas > 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
-    if (internos.length) saida.push(ordenar({ nome: 'Sistemas nossos', robos: internos }));
-    return saida;
+// Robô por robô (09-10-2026, 2ª versão): UMA TABELA, uma linha por robô — os
+// cartões por seguradora tinham alturas diferentes e deixavam buracos na tela
+// (nem a grade nem as colunas corridas resolveram). Ordem: quem pede atenção,
+// depois quem está rodando, depois por seguradora; "Sistemas nossos" no fim.
+function seguradorasDoRobo(r) {
+    if (r.sistema_nosso) return 'Sistemas nossos';
+    const nomes = [...new Set(r.seguradoras.map(nomeSeguradora))];
+    return nomes.length ? nomes.join(', ') : '—';
+}
+
+function ordemDosRobos(lista) {
+    const peso = (r) => (r.travado || motivosAtencao(r).length ? 0 : r.rodando ? 1 : 2);
+    return lista.slice().sort((a, b) => peso(a) - peso(b)
+        || (a.sistema_nosso - b.sistema_nosso)
+        || seguradorasDoRobo(a).localeCompare(seguradorasDoRobo(b), 'pt-BR')
+        || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
 function desenharRobos(lista) {
@@ -339,40 +335,44 @@ function desenharRobos(lista) {
         return;
     }
     const estado = (r) => (r.travado ? 'falha' : r.rodando ? 'rodando' : ({ sucesso: 'ok', erro: 'falha' }[r.ultimo_status] || 'neutro'));
-    montar('#lista-robos', grupos(lista).map((g) => {
-        const t = somar(g.robos.map((r) => contagens(r).atual));
-        const taxa = taxaDe(t);
-        return html`<div class="cartao">
-            <div class="cartao-cabecalho"><h3>${g.nome}</h3><span class="fraco minimo">${taxa === null ? 'sem execução no período' : `${percentual(taxa)} certo · ${plural(t[0] + t[1], 'execução', 'execuções')}`}</span></div>
-            <div class="lista-itens">${g.robos.map((r) => {
-                const c = contagens(r).atual;
-                const tx = taxaDe(c);
-                const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
-                const frente = html`<div class="painel-robo-frente">
-                    <span class="ponto" data-estado="${estado(r)}" aria-label="${{ ok: 'última deu certo', falha: 'última falhou', rodando: 'rodando agora', neutro: 'sem execução' }[estado(r)]}"></span>
-                    <span style="min-width:0">
-                        <span class="item-titulo">${r.nome}${r.resumo ? html` <i class="bi bi-info-circle painel-robo-dica" aria-hidden="true"></i>` : ''}</span><br>
-                        <span class="item-texto">${r.travado ? `parece travado (desde ${relativo(r.ultima_execucao_em)})` : r.rodando ? 'rodando agora' : (r.ultima_execucao_em ? `rodou ${relativo(r.ultima_execucao_em)}` : 'sem execução registrada')}</span>
-                        <span class="progresso" data-estado="${est}" title="${tx === null ? 'Sem execução no período' : `${percentual(tx)} deram certo em ${numero(c[0] + c[1])}`}"><span style="width:${tx === null ? 0 : Math.round(tx * 100)}%"></span></span>
-                    </span>
-                    <span class="item-meta">${tx === null ? '—' : percentual(tx)}<br><span class="fraco">${plural(c[0] + c[1], 'vez', 'vezes')}</span></span>
-                </div>`;
-                // Sem resumo público o cartão não vira (e nem parece clicável).
-                if (!r.resumo) return html`<div class="item painel-robo"><div class="painel-robo-miolo">${frente}</div></div>`;
-                const virado = virados.has(r.id);
-                return html`<div class="item painel-robo" data-vira="${r.id}" role="button" tabindex="0" aria-pressed="${String(virado)}"
-                        aria-label="${virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}. Toque para ver o que este robô faz.`}">
-                    <div class="painel-robo-miolo">
-                        ${frente}
-                        <div class="painel-robo-verso" aria-hidden="${String(!virado)}">
-                            <span class="item-titulo">${r.nome}</span>
-                            <span class="painel-robo-resumo">${r.resumo}</span>
-                            <span class="minimo fraco"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> toque para voltar</span>
-                        </div>
-                    </div>
-                </div>`;
-            })}</div></div>`;
-    }));
+    const rotuloEstado = { ok: 'última deu certo', falha: 'última falhou', rodando: 'rodando agora', neutro: 'sem execução' };
+    montar('#lista-robos', html`<div class="tabela-envoltorio"><table class="tabela tabela-robos">
+        <thead><tr>
+            <th scope="col">Robô</th>
+            <th scope="col" class="col-seguradora">Seguradora</th>
+            <th scope="col">Última execução</th>
+            <th scope="col" class="col-acerto">Deu certo no período</th>
+            <th scope="col" class="direita col-vezes">Execuções</th>
+        </tr></thead>
+        <tbody>${ordemDosRobos(lista).map((r) => {
+            const c = contagens(r).atual;
+            const tx = taxaDe(c);
+            const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
+            const e = estado(r);
+            const aberto = virados.has(r.id);
+            const quando = r.travado ? `parece travado (desde ${relativo(r.ultima_execucao_em)})`
+                : r.rodando ? 'rodando agora' : (r.ultima_execucao_em ? relativo(r.ultima_execucao_em) : 'sem execução registrada');
+            const linha = html`<tr data-estado="${e}">
+                <td><span class="robo-nome">
+                    <span class="ponto" data-estado="${e}" role="img" aria-label="${rotuloEstado[e]}"></span>
+                    ${r.resumo
+                        ? html`<button type="button" class="robo-botao" data-vira="${r.id}" aria-expanded="${String(aberto)}" title="O que este robô faz">${r.nome} <i class="bi bi-${aberto ? 'chevron-up' : 'info-circle'}" aria-hidden="true"></i></button>`
+                        : html`<span class="robo-botao">${r.nome}</span>`}
+                </span></td>
+                <td class="col-seguradora fraco">${seguradorasDoRobo(r)}</td>
+                <td class="${e === 'falha' ? 'texto-falha' : ''}">${quando}</td>
+                <td class="col-acerto"><span class="acerto">
+                    <span class="progresso" data-estado="${est}" title="${tx === null ? 'Sem execução no período' : `${percentual(tx)} deram certo em ${numero(c[0] + c[1])}`}"><span style="width:${tx === null ? 0 : Math.round(tx * 100)}%"></span></span>
+                    <span class="acerto-valor">${tx === null ? '—' : percentual(tx)}</span>
+                </span></td>
+                <td class="direita col-vezes">${numero(c[0] + c[1])}</td>
+            </tr>`;
+            // Tocar no nome abre, logo abaixo, o que o robô faz (resumo público).
+            return aberto && r.resumo
+                ? html`${linha}<tr class="robo-resumo"><td colspan="5">${r.resumo}</td></tr>`
+                : linha;
+        })}</tbody>
+    </table></div>`);
 }
 
 function desenharFiltros(lista) {
@@ -423,23 +423,14 @@ async function carregar() {
 }
 
 ['periodo', 'tipo', 'situacao'].forEach((chave) => ligarSegmentado(`[data-filtro="${chave}"]`, filtros, chave, aoMudarFiltro));
-// Virar o cartão do robô: clique/toque, ou Enter/Espaço no teclado.
-function virar(el) {
-    const id = Number(el.dataset.vira);
-    const virado = !virados.has(id);
-    if (virado) virados.add(id); else virados.delete(id);
-    const r = dados.robos.find((x) => x.id === id);
-    el.setAttribute('aria-pressed', String(virado));
-    el.setAttribute('aria-label', virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}. Toque para ver o que este robô faz.`);
-    el.querySelector('.painel-robo-verso').setAttribute('aria-hidden', String(!virado));
-}
+// Abrir/fechar o que o robô faz: o nome é um botão (Enter/Espaço já funcionam).
 $('#lista-robos').addEventListener('click', (ev) => {
     const el = ev.target.closest('[data-vira]');
-    if (el) virar(el);
-});
-$('#lista-robos').addEventListener('keydown', (ev) => {
-    const el = ev.target.closest('[data-vira]');
-    if (el && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); virar(el); }
+    if (!el) return;
+    const id = Number(el.dataset.vira);
+    if (virados.has(id)) virados.delete(id); else virados.add(id);
+    desenhar();
+    document.querySelector(`#lista-robos [data-vira="${id}"]`)?.focus();
 });
 
 $('#filtro-seguradora').addEventListener('change', (ev) => { filtros.seguradora = ev.target.value; aoMudarFiltro(); });

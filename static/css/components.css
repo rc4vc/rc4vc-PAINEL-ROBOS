@@ -1044,24 +1044,6 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
 .tendencia[data-bom="neutro"] { color: var(--texto-2); }
 
 .painel-grafico { position: relative; height: 280px; }
-.painel-robo .progresso { display: block; height: 6px; margin-top: var(--e-2); }
-.painel-robo .item-meta { text-align: right; }
-
-/* Cartão do robô que vira (verso = o que ele faz, do resumo público). As
-   duas faces ocupam a mesma célula da grade: a altura é a da maior. */
-.painel-robo { display: block; perspective: 1000px; }
-.painel-robo-miolo { display: grid; transform-style: preserve-3d; transition: transform 0.5s ease; }
-.painel-robo-frente,
-.painel-robo-verso { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-.painel-robo-frente { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--e-3); }
-.painel-robo-verso { display: flex; flex-direction: column; justify-content: center; gap: var(--e-1); transform: rotateY(180deg); }
-.painel-robo-resumo { color: var(--texto); font-size: var(--fs-sm); line-height: 1.45; }
-.painel-robo-dica { color: var(--texto-3); font-size: var(--fs-xs); }
-.painel-robo[data-vira] { cursor: pointer; }
-.painel-robo[data-vira]:hover { background: var(--superficie-2); }
-.painel-robo[data-vira]:hover .painel-robo-dica { color: var(--primaria-texto); }
-.painel-robo[aria-pressed="true"] .painel-robo-miolo { transform: rotateY(180deg); }
-@media (prefers-reduced-motion: reduce) { .painel-robo-miolo { transition: none; } }
 
 @media (max-width: 640px) {
     .painel-filtros { padding: var(--e-3); }
@@ -1134,14 +1116,29 @@ a.item:hover { background: var(--superficie-2); text-decoration: none; }
 .assunto-tela[data-assunto="negocio"] .assunto-etiqueta { background: var(--acento-suave); color: var(--acento-texto); }
 .assunto-pergunta { color: var(--texto-3); font-size: var(--fs-sm); }
 
-/* Robô por robô (09-10-2026): duas colunas que NÃO esticam — antes cada
-   cartão tomava a altura do vizinho mais alto e Fator/Mapfre ficavam com
-   metade vazia. */
-.grade-robos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: var(--e-4); align-items: start; }
-/* O verso só ocupa altura quando está virado: a linha fica do tamanho da
-   frente (antes a descrição longa do verso inflava todas as linhas). */
-.painel-robo:not([aria-pressed="true"]) .painel-robo-verso { height: 0; overflow: hidden; }
-.painel-robo .lista-itens > .item, .grade-robos .item { padding-top: var(--e-3); padding-bottom: var(--e-3); }
+/* Robô por robô (09-10-2026, 2ª versão): uma tabela, uma linha por robô.
+   Os cartões por seguradora (em grade e depois em colunas corridas) deixavam
+   buracos porque cada um tinha uma altura. */
+#lista-robos > .tabela-envoltorio { border: 0; margin: 0; }
+.tabela-robos td { vertical-align: middle; }
+.tabela-robos tbody tr[data-estado="falha"] { background: color-mix(in srgb, var(--falha) 7%, transparent); }
+.robo-nome { display: inline-flex; align-items: center; gap: var(--e-3); min-width: 0; }
+.robo-botao { padding: 0; border: 0; background: none; color: var(--texto); font: inherit; font-weight: var(--peso-forte); text-align: left; cursor: pointer; }
+span.robo-botao { cursor: default; }
+button.robo-botao i { color: var(--texto-3); font-size: var(--fs-xs); }
+button.robo-botao:hover, button.robo-botao:hover i { color: var(--primaria-texto); }
+.acerto { display: flex; align-items: center; gap: var(--e-3); min-width: 160px; }
+.acerto .progresso { flex: 1; height: 6px; }
+.acerto-valor { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.robo-resumo td { padding-top: 0; color: var(--texto-2); font-size: var(--fs-sm); line-height: 1.5; border-top: 0; }
+.robo-resumo td::before { content: "O que faz: "; color: var(--texto-3); }
+@media (max-width: 760px) { .tabela-robos .col-seguradora, .tabela-robos .col-vezes { display: none; } }
+@media (max-width: 480px) {
+    .tabela-robos th { white-space: normal; }
+    .tabela-robos td, .tabela-robos th { padding-left: var(--e-2); padding-right: var(--e-2); }
+    .acerto { min-width: 0; }
+    .acerto .progresso { display: none; }
+}
 
 /* Rodapé das telas públicas: hora dos dados + link para o outro assunto. */
 .rodape-publico { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--e-2) var(--e-5); margin-top: var(--e-6); padding-top: var(--e-4); border-top: 1px solid var(--borda); color: var(--texto-3); font-size: var(--fs-xs); }
