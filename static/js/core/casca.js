@@ -140,6 +140,10 @@ if (window.CENTRAL?.admin && document.querySelector('[data-texto]')) {
     import('./textos.js').then((m) => m.ativarEdicao());
 }
 
+// Quem está online (tela Equipe): sinal a cada 2 min enquanto a Central estiver
+// aberta, mesmo com a aba em segundo plano (backend/usuarios/presenca.py).
+setInterval(() => { fetch('/api/perfil/presenca', { method: 'POST', credentials: 'same-origin' }).catch(() => {}); }, 120_000);
+
 // Som e notificação do Windows quando surge um alerta novo (sininho no topo).
 if (document.querySelector('[data-avisos-botao]')) {
     import('./avisos.js').then((m) => m.iniciarAvisos());
