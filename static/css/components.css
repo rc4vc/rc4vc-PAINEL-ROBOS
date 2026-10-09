@@ -1132,7 +1132,6 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
 .painel-vivo .robos-blocos { gap: var(--e-3); }
 .painel-vivo .robo-bloco { padding: var(--e-4); gap: var(--e-2); }
 .painel-vivo .painel-grafico { height: 220px; }
-.painel-vivo .esteira-etapa { padding: var(--e-2) var(--e-3); }
 .painel-vivo .rodape-publico { margin-top: var(--e-4); padding-top: var(--e-3); }
 
 /* Etiqueta do assunto + a pergunta da tela, no topo da manchete pública. */
@@ -1171,23 +1170,28 @@ button.robo-cartao:focus-visible .robo-face { outline: 2px solid var(--primaria)
 .robo-dica-icone { color: var(--texto-3); font-size: var(--fs-xs); }
 button.robo-cartao:hover .robo-dica-icone { color: var(--primaria-texto); }
 @media (prefers-reduced-motion: reduce) { .robo-miolo { transition: none; } }
-/* O que vem por aí com identidade própria (09-10-2026): quadro de listas —
-   um cartão por tipo de trabalho, uma linha por automação. Colunas corridas
-   (cada cartão encaixa abaixo do anterior). */
-.kanban-tipos { columns: 2 480px; column-gap: var(--e-4); }
-.kanban-tipo { break-inside: avoid; margin: 0 0 var(--e-4); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-lg); box-shadow: var(--sombra-1); overflow: hidden; }
-.kanban-tipo > header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--e-2); padding: var(--e-3) var(--e-4); background: var(--superficie-2); border-bottom: 1px solid var(--borda); }
-.kanban-tipo > header h3 { margin: 0; font-size: var(--fs-base); }
-.kanban-tipo > header p { grid-column: 1 / -1; margin: 2px 0 0; color: var(--texto-3); font-size: var(--fs-xs); }
-.kanban-lista { margin: 0; padding: 0; list-style: none; }
-.kanban-linha { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--e-3); padding: var(--e-2) var(--e-4); border-bottom: 1px solid var(--borda); font-size: var(--fs-sm); }
-.kanban-linha:last-child { border-bottom: 0; }
-.kanban-nome { min-width: 0; overflow: hidden; font-weight: var(--peso-forte); text-overflow: ellipsis; white-space: nowrap; }
-.kanban-novo { margin-left: var(--e-1); padding: 1px var(--e-2); border-radius: var(--raio-pilula); background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); font-size: var(--fs-2xs); font-weight: var(--peso-titulo); text-transform: uppercase; letter-spacing: 0.04em; }
-.kanban-seg { color: var(--texto-2); white-space: nowrap; }
-.kanban-quando { min-width: 6.5em; color: var(--texto-3); font-size: var(--fs-xs); text-align: right; white-space: nowrap; }
-@media (max-width: 560px) { .kanban-linha { grid-template-columns: auto minmax(0, 1fr) auto; } .kanban-seg { display: none; } }
-.esteira-andando { margin-top: var(--e-4); }
+/* Kanban público igual ao "Em construção" da Central (09-10-2026): as
+   mesmas regras de .quadro/.coluna/.ficha de em_construcao.html, com prefixo
+   próprio para não colidir com outras telas. Mudou lá, mudar aqui. */
+.kanban-quadro { display: grid; grid-template-columns: repeat(4, minmax(240px, 1fr)); gap: var(--e-4); align-items: stretch; overflow-x: auto; padding-bottom: var(--e-2); }
+/* As colunas ocupam a altura toda da tela, até o rodapé (09-10-2026, pedido
+   do responsável: "alongue essas colunas sem deixar espaços em branco"). A
+   página vira uma coluna flexível e o quadro fica com o espaço que sobra;
+   com muitas fichas ele simplesmente cresce e a página rola. */
+body:has(.kanban-quadro) { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+body:has(.kanban-quadro) > .simples-topo { width: 100%; box-sizing: border-box; }
+body:has(.kanban-quadro) > main { flex: 1; display: flex; flex-direction: column; }
+body:has(.kanban-quadro) .simples-conteudo { flex: 1; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; padding-bottom: var(--e-4); }
+body:has(.kanban-quadro) .kanban-quadro { flex: 1; margin-bottom: 0; }
+.kanban-coluna { display: flex; flex-direction: column; gap: var(--e-3); min-height: 220px; padding: var(--e-3); background: var(--superficie-2); border: 1px solid var(--borda); border-radius: var(--raio-lg); }
+.kanban-coluna-topo { display: flex; align-items: center; gap: var(--e-2); padding: var(--e-1) var(--e-2); }
+.kanban-coluna-topo h2 { margin: 0; font-size: var(--fs-sm); }
+.kanban-contagem { margin-left: auto; }
+.kanban-ficha { display: grid; gap: var(--e-2); padding: var(--e-3); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-md); box-shadow: var(--sombra-1); }
+.kanban-ficha h3 { margin: 0; font-size: var(--fs-sm); }
+.kanban-ficha p { margin: 0; color: var(--texto-2); font-size: var(--fs-xs); }
+.kanban-ficha-rodape { display: flex; align-items: center; gap: var(--e-1); }
+@media (max-width: 960px) { .kanban-quadro { grid-template-columns: repeat(4, minmax(260px, 85vw)); scroll-snap-type: x mandatory; } .kanban-coluna { scroll-snap-align: start; } }
 
 .robo-bloco {
     position: relative;
@@ -1239,25 +1243,6 @@ button.robo-cartao:hover .robo-dica-icone { color: var(--primaria-texto); }
 .rodape-publico .links { display: flex; flex-wrap: wrap; gap: var(--e-2) var(--e-5); }
 .rodape-publico a[data-assunto="negocio"] { color: var(--acento-texto); }
 
-/* O que vem por aí (09-10-2026): a esteira de 4 etapas no topo — etapa vazia
-   fica pequena — e o que está em produção agrupado por tipo de trabalho. */
-.esteira { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e-3); margin: 0; padding: 0; list-style: none; }
-.esteira-etapa { display: grid; gap: 2px; padding: var(--e-3) var(--e-4); border: 1px dashed var(--borda-forte); border-radius: var(--raio-md); }
-.esteira-etapa[data-cheia="sim"] { border-style: solid; background: var(--superficie); }
-.esteira-etapa[data-coluna="em_producao"][data-cheia="sim"] { border-color: color-mix(in srgb, var(--ok) 55%, var(--borda)); }
-.esteira-etapa .topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-2); font-weight: var(--peso-forte); font-size: var(--fs-sm); }
-.esteira-etapa .topo i { color: var(--texto-3); margin-right: var(--e-1); }
-.esteira-etapa p { margin: 0; color: var(--texto-3); font-size: var(--fs-xs); }
-.esteira-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: var(--e-3); margin-top: var(--e-3); }
-.producao-tipo + .producao-tipo { margin-top: var(--e-6); }
-.producao-tipo > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--e-1) var(--e-3); padding-bottom: var(--e-2); border-bottom: 1px solid var(--borda); }
-.producao-tipo > header h3 { margin: 0; font-size: var(--fs-base); }
-.producao-tipo > header span { color: var(--texto-3); font-size: var(--fs-sm); }
-.cartao-producao { display: grid; gap: var(--e-1); padding: var(--e-3) var(--e-4); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-md); }
-.cartao-producao .topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-2); }
-.cartao-producao strong { font-size: var(--fs-sm); }
-.cartao-producao .nome, .cartao-producao .quando { color: var(--texto-3); font-size: var(--fs-xs); }
-@media (max-width: 760px) { .esteira { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Quadro ao vivo (quadro_publico.html) */
 .quadro-vivo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e-4); }
