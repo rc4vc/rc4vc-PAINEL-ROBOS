@@ -270,7 +270,7 @@ a.usuario-atual:hover,
 a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-decoration: none; }
 .usuario-atual .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .usuario-atual .avatar {
-    overflow: hidden;
+    position: relative;
     flex: none;
     display: grid;
     place-items: center;
@@ -281,6 +281,20 @@ a.usuario-atual[aria-current="page"] { background: var(--superficie-2); text-dec
     color: var(--acento-texto);
     font-weight: var(--peso-forte);
     font-size: var(--fs-sm);
+}
+/* Online: bolinha verde no canto da foto enquanto o sinal de presença é
+   aceito (casca.js; some se a sessão cair). Sem overflow:hidden no avatar
+   para a bolinha não ser cortada; a foto já é redonda pelo próprio img. */
+.usuario-atual .avatar[data-online="sim"]::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 2px var(--superficie);
 }
 .usuario-atual .nome { color: var(--texto); font-weight: var(--peso-medio); }
 .usuario-atual .papel { font-size: var(--fs-xs); color: var(--texto-3); }

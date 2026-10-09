@@ -141,8 +141,13 @@ if (window.CENTRAL?.admin && document.querySelector('[data-texto]')) {
 }
 
 // Quem está online (tela Equipe): sinal a cada 2 min enquanto a Central estiver
-// aberta, mesmo com a aba em segundo plano (backend/usuarios/presenca.py).
-setInterval(() => { fetch('/api/perfil/presenca', { method: 'POST', credentials: 'same-origin' }).catch(() => {}); }, 120_000);
+// aberta, mesmo com a aba em segundo plano (backend/usuarios/presenca.py). A
+// bolinha verde no avatar do menu acompanha: some se o sinal não for aceito.
+setInterval(async () => {
+    let online = false;
+    try { online = (await fetch('/api/perfil/presenca', { method: 'POST', credentials: 'same-origin' })).ok; } catch (e) { /* sem rede */ }
+    document.querySelectorAll('[data-avatar-eu]').forEach((a) => { a.dataset.online = online ? 'sim' : 'nao'; });
+}, 120_000);
 
 // Som e notificação do Windows quando surge um alerta novo (sininho no topo).
 if (document.querySelector('[data-avisos-botao]')) {
