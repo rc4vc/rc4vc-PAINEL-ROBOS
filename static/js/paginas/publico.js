@@ -17,9 +17,6 @@ const SITUACAO_TEXTO = { problema: 'com problema', rodando: 'rodando agora', ok:
 const filtros = lerFiltros(PADROES);
 let dados = null;
 let grafico = null;
-// Robôs com o "o que faz" aberto na tabela. Fica guardado aqui para a
-// atualização de cada minuto não fechar o de ninguém.
-const virados = new Set();
 
 // API na Central; arquivo JSON no site estático (GitHub Pages). O `t=`
 // fura o cache do Pages (~10 min) para pegar a última publicação.
@@ -311,10 +308,12 @@ function desenharAtencao(atencao) {
         </div>`)}</div></div>`);
 }
 
-// Robô por robô (09-10-2026, 2ª versão): UMA TABELA, uma linha por robô — os
-// cartões por seguradora tinham alturas diferentes e deixavam buracos na tela
-// (nem a grade nem as colunas corridas resolveram). Ordem: quem pede atenção,
-// depois quem está rodando, depois por seguradora; "Sistemas nossos" no fim.
+// Robô por robô (09-10-2026, 3ª versão): BLOCOS IGUAIS, um por robô. Os
+// cartões por seguradora tinham alturas diferentes e deixavam buracos (grade e
+// colunas corridas); a tabela que veio depois foi recusada ("quero uma
+// visualização moderna e objetiva"). Cada bloco: a situação em destaque, um
+// anel com quanto deu certo no período e a última execução. Ordem: quem pede
+// atenção, quem está rodando, depois por seguradora; "Sistemas nossos" no fim.
 function seguradorasDoRobo(r) {
     if (r.sistema_nosso) return 'Sistemas nossos';
     const nomes = [...new Set(r.seguradoras.map(nomeSeguradora))];
@@ -329,50 +328,63 @@ function ordemDosRobos(lista) {
         || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
+/** Situação do bloco: [estado, texto da etiqueta]. */
+function situacaoDoRobo(r, execucoes) {
+    if (r.travado) return ['falha', 'Parece travado'];
+    if (r.rodando) return ['rodando', 'Rodando agora'];
+    if (r.ultimo_status === 'erro') return ['falha', 'Falhou na última'];
+    if (motivosAtencao(r).length) return ['atencao', 'Pede atenção'];
+    if (!execucoes) return ['neutro', filtros.periodo === 'hoje' ? 'Não rodou hoje' : 'Não rodou no período'];
+    return ['ok', 'Deu certo'];
+}
+
+// Anel de 0 a 100%: o quanto deu certo no período.
+const CIRCUNFERENCIA = 2 * Math.PI * 20;
+function anel(taxa, estado) {
+    const cheio = taxa === null ? 0 : taxa * CIRCUNFERENCIA;
+    return html`<svg class="anel" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="20" class="anel-fundo"></circle>
+        ${cheio > 0 ? html`<circle cx="24" cy="24" r="20" class="anel-valor" data-estado="${estado}" stroke-dasharray="${cheio.toFixed(1)} ${CIRCUNFERENCIA.toFixed(1)}"></circle>` : ''}
+    </svg>`;
+}
+
+// O resultado do período em palavras, ao lado do anel (09-10-2026: só o %
+// pedia interpretação).
+function textoExecucoes(ok, falhas) {
+    const total = ok + falhas;
+    if (!total) return filtros.periodo === 'hoje' ? 'Nenhuma execução hoje' : 'Nenhuma execução no período';
+    return `${ok} de ${total} ${ok === 1 ? 'deu' : 'deram'} certo`;
+}
+
 function desenharRobos(lista) {
     if (!lista.length) {
         montar('#lista-robos', vazio('funnel', 'Nenhum robô neste recorte.', 'Troque os filtros acima.'));
         return;
     }
-    const estado = (r) => (r.travado ? 'falha' : r.rodando ? 'rodando' : ({ sucesso: 'ok', erro: 'falha' }[r.ultimo_status] || 'neutro'));
-    const rotuloEstado = { ok: 'última deu certo', falha: 'última falhou', rodando: 'rodando agora', neutro: 'sem execução' };
-    montar('#lista-robos', html`<div class="tabela-envoltorio"><table class="tabela tabela-robos">
-        <thead><tr>
-            <th scope="col">Robô</th>
-            <th scope="col" class="col-seguradora">Seguradora</th>
-            <th scope="col">Última execução</th>
-            <th scope="col" class="col-acerto">Deu certo no período</th>
-            <th scope="col" class="direita col-vezes">Execuções</th>
-        </tr></thead>
-        <tbody>${ordemDosRobos(lista).map((r) => {
-            const c = contagens(r).atual;
-            const tx = taxaDe(c);
-            const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
-            const e = estado(r);
-            const aberto = virados.has(r.id);
-            const quando = r.travado ? `parece travado (desde ${relativo(r.ultima_execucao_em)})`
-                : r.rodando ? 'rodando agora' : (r.ultima_execucao_em ? relativo(r.ultima_execucao_em) : 'sem execução registrada');
-            const linha = html`<tr data-estado="${e}">
-                <td><span class="robo-nome">
-                    <span class="ponto" data-estado="${e}" role="img" aria-label="${rotuloEstado[e]}"></span>
-                    ${r.resumo
-                        ? html`<button type="button" class="robo-botao" data-vira="${r.id}" aria-expanded="${String(aberto)}" title="O que este robô faz">${r.nome} <i class="bi bi-${aberto ? 'chevron-up' : 'info-circle'}" aria-hidden="true"></i></button>`
-                        : html`<span class="robo-botao">${r.nome}</span>`}
-                </span></td>
-                <td class="col-seguradora fraco">${seguradorasDoRobo(r)}</td>
-                <td class="${e === 'falha' ? 'texto-falha' : ''}">${quando}</td>
-                <td class="col-acerto"><span class="acerto">
-                    <span class="progresso" data-estado="${est}" title="${tx === null ? 'Sem execução no período' : `${percentual(tx)} deram certo em ${numero(c[0] + c[1])}`}"><span style="width:${tx === null ? 0 : Math.round(tx * 100)}%"></span></span>
-                    <span class="acerto-valor">${tx === null ? '—' : percentual(tx)}</span>
-                </span></td>
-                <td class="direita col-vezes">${numero(c[0] + c[1])}</td>
-            </tr>`;
-            // Tocar no nome abre, logo abaixo, o que o robô faz (resumo público).
-            return aberto && r.resumo
-                ? html`${linha}<tr class="robo-resumo"><td colspan="5">${r.resumo}</td></tr>`
-                : linha;
-        })}</tbody>
-    </table></div>`);
+    montar('#lista-robos', ordemDosRobos(lista).map((r) => {
+        const [ok, falhas] = contagens(r).atual;
+        const tx = taxaDe([ok, falhas]);
+        const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
+        const [estado, etiqueta] = situacaoDoRobo(r, ok + falhas);
+        const quando = r.rodando ? 'em execução agora' : (r.ultima_execucao_em ? `última ${relativo(r.ultima_execucao_em)}` : 'nunca rodou');
+        // Bloco objetivo (09-10-2026): o que o robô faz numa frase, sempre à
+        // vista (antes ficava atrás de um toque), e o resultado do período no
+        // anel + em palavras.
+        return html`<li><article class="robo-bloco" data-estado="${estado}" aria-labelledby="robo-${r.id}">
+            <span class="robo-bloco-topo">
+                <span class="robo-etiqueta" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span>${etiqueta}</span>
+                <span class="robo-seguradora">${seguradorasDoRobo(r)}</span>
+            </span>
+            <span class="robo-bloco-texto">
+                <h3 class="robo-bloco-nome" id="robo-${r.id}">${r.nome}</h3>
+                ${r.resumo ? html`<span class="robo-bloco-resumo">${r.resumo}</span>` : ''}
+            </span>
+            <span class="robo-bloco-pe">
+                <span class="robo-anel">${anel(tx, est)}<span class="robo-anel-valor">${tx === null ? '—' : percentual(tx)}</span></span>
+                <span class="robo-bloco-numeros"><strong>${textoExecucoes(ok, falhas)}</strong><span>${quando}</span></span>
+            </span>
+        </article></li>`;
+    }));
 }
 
 function desenharFiltros(lista) {
@@ -423,16 +435,6 @@ async function carregar() {
 }
 
 ['periodo', 'tipo', 'situacao'].forEach((chave) => ligarSegmentado(`[data-filtro="${chave}"]`, filtros, chave, aoMudarFiltro));
-// Abrir/fechar o que o robô faz: o nome é um botão (Enter/Espaço já funcionam).
-$('#lista-robos').addEventListener('click', (ev) => {
-    const el = ev.target.closest('[data-vira]');
-    if (!el) return;
-    const id = Number(el.dataset.vira);
-    if (virados.has(id)) virados.delete(id); else virados.add(id);
-    desenhar();
-    document.querySelector(`#lista-robos [data-vira="${id}"]`)?.focus();
-});
-
 $('#filtro-seguradora').addEventListener('change', (ev) => { filtros.seguradora = ev.target.value; aoMudarFiltro(); });
 $('#limpar-filtros').addEventListener('click', () => {
     Object.assign(filtros, PADROES);
