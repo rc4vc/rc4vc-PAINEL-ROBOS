@@ -1155,10 +1155,11 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
 .painel-secao h2 { margin: 0; font-size: var(--fs-lg); }
 .painel-secao-topo .painel-recorte { display: inline; margin-left: var(--e-2); padding: 0; border: 0; color: var(--texto-3); font-size: var(--fs-sm); font-weight: var(--peso-medio); }
 .painel-legenda { margin: 0; color: var(--texto-3); font-size: var(--fs-xs); max-width: 90ch; }
-.painel-ritmo .cartao-corpo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-4) var(--e-6); }
-.painel-ritmo-texto { flex: 1 1 240px; min-width: 0; }
+/* O ritmo: título e frase no topo, à esquerda; gráfico embaixo, na largura toda (13-10-2026). */
+.painel-ritmo .cartao-corpo { display: flex; flex-direction: column; align-items: stretch; gap: var(--e-3); }
+.painel-ritmo-texto { min-width: 0; max-width: 72ch; text-align: left; }
 .painel-ritmo-texto p { margin: var(--e-2) 0 0; color: var(--texto-2); font-size: var(--fs-sm); }
-.painel-vivo .painel-ritmo .painel-grafico { flex: 999 1 560px; min-width: 0; height: 170px; }
+.painel-vivo .painel-ritmo .painel-grafico { width: 100%; min-width: 0; height: 170px; }
 @media (max-width: 640px) {
     .painel-resumo { padding: var(--e-4); }
     .painel-resumo .painel-numeros { border-left: 0; border-top: 1px solid var(--borda); }

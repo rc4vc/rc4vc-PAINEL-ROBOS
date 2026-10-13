@@ -92,8 +92,12 @@ const somar = (pares) => pares.reduce((t, [s, e]) => [t[0] + s, t[1] + e], [0, 0
 /** [sucesso, erro] do robô no período atual e no anterior (mesmo tamanho). */
 function contagens(r) {
     if (filtros.periodo === 'hoje') {
+        // Ontem até este mesmo minuto vem do servidor (13-10-2026); somar
+        // `horas_ontem` até a hora cheia (às 10:17, ontem até 10:59) fica só
+        // de reserva para quem ainda não tem o campo novo.
         const h = new Date().getHours();
-        return { atual: somar(r.horas_hoje), anterior: somar(r.horas_ontem.slice(0, h + 1)) };
+        const anterior = r.ontem_ate_agora || somar(r.horas_ontem.slice(0, h + 1));
+        return { atual: somar(r.horas_hoje), anterior };
     }
     const n = Number(filtros.periodo);
     return { atual: somar(r.dias.slice(-n)), anterior: somar(r.dias.slice(-2 * n, -n)) };
