@@ -17,9 +17,9 @@ const SITUACAO_TEXTO = { problema: 'com problema', rodando: 'rodando agora', ok:
 const filtros = lerFiltros(PADROES);
 let dados = null;
 let grafico = null;
-// Cartões virados (mostrando o que o robô faz). Guardado aqui para a
-// atualização de cada minuto não desvirar o cartão de ninguém.
-const virados = new Set();
+// Robôs com o "o que faz" aberto. Guardado aqui para a atualização de cada
+// minuto não fechar o de ninguém.
+const abertos = new Set();
 
 // API na Central; arquivo JSON no site estático (GitHub Pages). O `t=`
 // fura o cache do Pages (~10 min) para pegar a última publicação.
@@ -329,12 +329,8 @@ function desenharAtencao(atencao) {
         </div>`)}</div></div>`);
 }
 
-// Robô por robô (09-10-2026, 3ª versão): BLOCOS IGUAIS, um por robô. Os
-// cartões por seguradora tinham alturas diferentes e deixavam buracos (grade e
-// colunas corridas); a tabela que veio depois foi recusada ("quero uma
-// visualização moderna e objetiva"). Cada bloco: a situação em destaque, um
-// anel com quanto deu certo no período e a última execução. Ordem: quem pede
-// atenção, quem está rodando, depois o nome. Agrupados por seguradora (13-10).
+// Robô por robô: histórico das versões em docs/HISTORICO.md (blocos iguais,
+// colunas, linhas; desde 13-10-2026, um cartão-história por seguradora).
 function seguradorasDoRobo(r) {
     if (r.sistema_nosso) return 'Sistemas nossos';
     const nomes = [...new Set(r.seguradoras.map(nomeSeguradora))];
@@ -367,12 +363,18 @@ function situacaoDoRobo(r, execucoes) {
     return ['ok', 'Deu certo'];
 }
 
-/** Segunda metade da linha de situação: quando rodou (ou quando vai rodar). */
-function quandoDoRobo(r, estado) {
-    if (r.rodando) return '';
-    if (estado === 'neutro' && !sobDemanda(r) && r.proxima_hoje && filtros.periodo === 'hoje') return `próxima às ${r.proxima_hoje}`;
-    if (!r.ultima_execucao_em) return 'nunca rodou';
-    return `${sobDemanda(r) ? 'última ' : ''}${relativo(r.ultima_execucao_em)}`;
+/** O que a linha do robô diz à direita: o fato que importa sobre ele agora. */
+function metaDoRobo(r, [estado, etiqueta]) {
+    const ultima = r.ultima_execucao_em ? relativo(r.ultima_execucao_em) : null;
+    if (r.rodando) return 'rodando agora';
+    if (estado === 'falha' || estado === 'atencao') return ultima ? `${etiqueta.toLowerCase()} · ${ultima}` : etiqueta.toLowerCase();
+    // A última execução de quem roda sob demanda vai no title da linha.
+    if (sobDemanda(r) && estado === 'neutro') return 'sob demanda';
+    if (estado === 'neutro') {
+        if (r.proxima_hoje && filtros.periodo === 'hoje') return `roda às ${r.proxima_hoje}`;
+        return ultima ? `não rodou · última ${ultima}` : 'nunca rodou';
+    }
+    return ultima ? `deu certo ${ultima}` : 'deu certo';
 }
 
 /** Nome sem a seguradora que já está no título da coluna
@@ -399,10 +401,8 @@ function anel(taxa, estado) {
     </svg>`;
 }
 
-// Grupos do Robô por robô (13-10-2026, pedido do responsável: "quero que
-// seja agrupado por seguradora"): um título por seguradora, com a contagem e
-// quantos pedem atenção, em ordem alfabética e Sistemas nossos no fim. Dentro
-// do grupo, quem pede atenção primeiro (ordemDosRobos).
+// Grupos por seguradora (13-10-2026, pedido do responsável); dentro do
+// grupo, quem pede atenção primeiro e sob demanda por último (ordemDosRobos).
 function desenharRobos(lista) {
     if (!lista.length) {
         montar('#lista-robos', vazio('funnel', 'Nenhum robô neste recorte.', 'Troque os filtros acima.'));
@@ -415,59 +415,89 @@ function desenharRobos(lista) {
         if (!grupos.has(nome)) grupos.set(nome, { nome, sistema: r.sistema_nosso, itens: [] });
         grupos.get(nome).itens.push({ r, ok, falhas, situacao: situacaoDoRobo(r, ok + falhas) });
     });
-    // Uma LINHA por seguradora, mesmo as que têm um robô só (13-10-2026,
-    // pedidos do responsável: "divida os robôs por seguradora" e depois "ao
-    // invés de colunas, deixe em linhas"): o nome à esquerda e os cartões lado
-    // a lado.
-    const ordem = [...grupos.values()].sort((a, b) => (a.sistema - b.sistema) || a.nome.localeCompare(b.nome, 'pt-BR'));
-    const el = $('#lista-robos');
-    montar(el, ordem.map((g) => {
-        const atencao = g.itens.filter((i) => ['falha', 'atencao'].includes(i.situacao[0])).length;
-        return html`<li class="robos-linha">
-            <div class="robos-grupo"><h3>${g.nome}</h3><span class="robos-grupo-contagem">${plural(g.itens.length, 'robô', 'robôs')}</span>${atencao
-                ? html`<span class="robos-grupo-atencao">${atencao} ${atencao === 1 ? 'pede' : 'pedem'} atenção</span>` : ''}</div>
-            <ul class="robos-linha-lista">${g.itens.map((i) => cartaoDoRobo(i, g))}</ul>
-        </li>`;
-    }));
+    // Um cartão por seguradora que conta o dia dela (13-10-2026, pedido do
+    // responsável: "refazer pensando na clareza e objetividade, com
+    // storytelling"): a situação num selo, UMA frase com a resposta, o anel
+    // com quanto deu certo e a lista dos robôs, um por linha, com o fato que
+    // importa sobre cada um. Quem pede atenção primeiro; Sistemas nossos no fim.
+    const ordem = [...grupos.values()].map(resumoDoGrupo)
+        .sort((a, b) => (a.sistema - b.sistema) || (PESO_GRUPO[a.estado] - PESO_GRUPO[b.estado]) || a.nome.localeCompare(b.nome, 'pt-BR'));
+    montar('#lista-robos', ordem.map(cartaoDaSeguradora));
 }
 
-/** Nome no cartão: na linha de uma seguradora, sem ela (já está no título);
- *  em Sistemas nossos, o nome inteiro. */
-function nomeNoCartao(r, grupo) {
+const PESO_GRUPO = { falha: 0, atencao: 0, rodando: 1, ok: 2, neutro: 3 };
+const SELO_GRUPO = { falha: 'Pede atenção', atencao: 'Pede atenção', rodando: 'Rodando agora', ok: 'Em dia', neutro: 'Sem execução' };
+const PERIODO_CURTO = { hoje: 'hoje', 7: 'em 7 dias', 30: 'em 30 dias' };
+
+/** A história de uma seguradora: estado, taxa e a frase que responde
+ *  "como foi o dia dela?" — o problema primeiro, se houver. */
+function resumoDoGrupo(g) {
+    const [ok, falhas] = somar(g.itens.map((i) => [i.ok, i.falhas]));
+    const execucoes = ok + falhas;
+    const taxa = taxaDe([ok, falhas]);
+    const problemas = g.itens.filter((i) => ['falha', 'atencao'].includes(i.situacao[0]));
+    const rodando = g.itens.filter((i) => i.r.rodando);
+    const agendados = g.itens.filter((i) => !sobDemanda(i.r));
+    const nome = (i) => nomeNoGrupo(i.r, g);
+    let estado;
+    let frase;
+    if (problemas.length) {
+        const [p] = problemas;
+        estado = problemas.some((i) => i.situacao[0] === 'falha') ? 'falha' : 'atencao';
+        const motivo = motivosAtencao(p.r)[0] || p.situacao[1].toLowerCase();
+        frase = `${nome(p)} ${motivo}${problemas.length > 1 ? ` (e mais ${problemas.length - 1})` : ''}.`;
+    } else {
+        const partes = [];
+        if (rodando.length) partes.push(`${rodando.map(nome).join(' e ')} ${rodando.length === 1 ? 'está' : 'estão'} rodando agora`);
+        if (execucoes) partes.push(`${plural(execucoes, 'execução', 'execuções')} ${PERIODO_CURTO[filtros.periodo]}, ${taxa === 1 ? 'todas deram certo' : `${percentual(taxa)} deram certo`}`);
+        else if (rodando.length) { /* a primeira execução do período é a que está rodando */ }
+        else if (agendados.length) {
+            const proxima = proximaDaLista(agendados.map((i) => i.r));
+            partes.push(proxima && filtros.periodo === 'hoje' ? `ainda não rodou hoje; o próximo é às ${proxima}` : 'não rodou no período');
+        } else partes.push('roda só quando alguém pede');
+        frase = partes.map((p) => `${p.charAt(0).toUpperCase()}${p.slice(1)}.`).join(' ');
+        estado = rodando.length ? 'rodando' : (execucoes ? 'ok' : 'neutro');
+    }
+    return { ...g, estado, frase, taxa };
+}
+
+function cartaoDaSeguradora(g) {
+    const est = g.taxa === null ? 'neutro' : (g.taxa >= 0.9 ? 'ok' : (g.taxa >= 0.7 ? 'atencao' : 'falha'));
+    return html`<li class="seg-cartao" data-estado="${g.estado}">
+        <div class="seg-topo">
+            <div class="seg-titulo">
+                <h3>${g.nome}</h3>
+                <span class="seg-selo" data-estado="${g.estado}"><span class="ponto" data-estado="${g.estado}" aria-hidden="true"></span>${SELO_GRUPO[g.estado]}</span>
+            </div>
+            ${g.taxa === null ? '' : html`<span class="robo-anel" title="${percentual(g.taxa)} das execuções deram certo">${anel(g.taxa, est)}<span class="robo-anel-valor">${percentual(g.taxa)}</span></span>`}
+        </div>
+        <p class="seg-frase">${g.frase}</p>
+        <ul class="seg-robos">${g.itens.map((i) => linhaDoRobo(i, g))}</ul>
+    </li>`;
+}
+
+/** Nome dentro do cartão da seguradora: sem ela (já está no título); em
+ *  Sistemas nossos, o nome inteiro. */
+function nomeNoGrupo(r, grupo) {
     return grupo.sistema ? r.nome : nomeSemSeguradora(r);
 }
 
-// Cartão compacto (13-10-2026): a situação e quando numa linha, o nome
-// embaixo e um anel pequeno à direita. Sob demanda: borda tracejada e sem
-// anel. O cartão continua virando para mostrar o que o robô faz.
-function cartaoDoRobo({ r, ok, falhas, situacao: [estado, etiqueta] }, grupo) {
-    const tx = taxaDe([ok, falhas]);
-    const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
-    const quando = quandoDoRobo(r, estado);
-    const semAnel = sobDemanda(r) && tx === null;
-    const frente = html`<span class="robo-face robo-bloco robo-compacto" data-estado="${estado}" data-modo="${r.modo}">
-        <span class="robo-compacto-texto">
-            <span class="robo-situacao" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span><span>${quando ? `${etiqueta} · ${quando}` : etiqueta}</span></span>
-            <span class="robo-bloco-nome">${nomeNoCartao(r, grupo)}</span>
-        </span>
-        ${semAnel ? '' : html`<span class="robo-anel">${anel(tx, est)}<span class="robo-anel-valor">${tx === null ? '—' : percentual(tx)}</span></span>`}
-        ${r.resumo ? html`<i class="bi bi-arrow-repeat robo-dica-icone" title="Toque para ver o que faz" aria-hidden="true"></i>` : ''}
-    </span>`;
-    const resultado = `${etiqueta}${quando ? `, ${quando}` : ''}${tx === null ? '' : `; ${percentual(tx)} deu certo no período`}.`;
-    if (!r.resumo) {
-        return html`<li><div class="robo-cartao" role="group" aria-label="${r.nome}: ${resultado}"><span class="robo-miolo">${frente}</span></div></li>`;
-    }
-    const virado = virados.has(r.id);
-    return html`<li><button type="button" class="robo-cartao" data-vira="${r.id}" aria-pressed="${String(virado)}"
-            aria-label="${virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}: ${resultado} Toque para ver o que ele faz.`}">
-        <span class="robo-miolo">
-            ${frente}
-            <span class="robo-face robo-verso robo-bloco" data-estado="${estado}" aria-hidden="${String(!virado)}">
-                <span class="robo-verso-rotulo">O que faz <i class="bi bi-arrow-counterclockwise" title="Toque para voltar" aria-hidden="true"></i></span>
-                <span class="robo-verso-texto">${r.resumo}</span>
-            </span>
-        </span>
-    </button></li>`;
+// Um robô = uma linha: forma/cor da situação, o nome e o fato que importa
+// ("deu certo há 5 min", "roda às 10:00", "sob demanda"). Tocando, abre o que
+// o robô faz (o `resumo` público); a atualização de cada minuto não fecha.
+function linhaDoRobo({ r, situacao }, grupo) {
+    const [estado] = situacao;
+    const meta = metaDoRobo(r, situacao);
+    const ultima = r.ultima_execucao_em ? `última execução ${relativo(r.ultima_execucao_em)}` : 'nunca rodou';
+    const dica = `${r.nome}: ${meta}${sobDemanda(r) ? ` (${ultima})` : ''}`;
+    const corpo = html`<span class="ponto" data-estado="${estado}" aria-hidden="true"></span>
+        <span class="seg-robo-nome">${nomeNoGrupo(r, grupo)}</span>
+        <span class="seg-robo-meta" data-estado="${estado}">${meta}</span>`;
+    if (!r.resumo) return html`<li class="seg-robo" data-modo="${r.modo}"><div class="seg-robo-linha" title="${dica}">${corpo}</div></li>`;
+    return html`<li class="seg-robo" data-modo="${r.modo}"><details data-robo="${r.id}"${abertos.has(r.id) ? ' open' : ''}>
+        <summary class="seg-robo-linha" title="${dica}. Toque para ver o que ele faz.">${corpo}</summary>
+        <p class="seg-robo-resumo">${r.resumo}</p>
+    </details></li>`;
 }
 
 function desenharFiltros(lista) {
@@ -520,18 +550,14 @@ async function carregar() {
 }
 
 ['periodo', 'tipo', 'situacao'].forEach((chave) => ligarSegmentado(`[data-filtro="${chave}"]`, filtros, chave, aoMudarFiltro));
-// Virar o cartão: clique/toque, ou Enter/Espaço (é um <button>). Só troca as
-// classes, sem redesenhar a tela (a animação de virar aparece).
-$('#lista-robos').addEventListener('click', (ev) => {
-    const el = ev.target.closest('[data-vira]');
-    if (!el) return;
-    const id = Number(el.dataset.vira);
-    const virado = !virados.has(id);
-    if (virado) virados.add(id); else virados.delete(id);
-    const r = dados.robos.find((x) => x.id === id);
-    el.setAttribute('aria-pressed', String(virado));
-    el.querySelector('.robo-verso').setAttribute('aria-hidden', String(!virado));
-    if (r) el.setAttribute('aria-label', virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}. Toque para ver o que ele faz.`);});
+// Abrir/fechar o "o que faz" de um robô (<details>): guarda quem está aberto
+// para a atualização de cada minuto não fechar. `toggle` não sobe, por isso
+// a escuta é na captura.
+$('#lista-robos').addEventListener('toggle', (ev) => {
+    const id = Number(ev.target.dataset?.robo);
+    if (!id) return;
+    if (ev.target.open) abertos.add(id); else abertos.delete(id);
+}, true);
 
 $('#filtro-seguradora').addEventListener('change', (ev) => { filtros.seguradora = ev.target.value; aoMudarFiltro(); });
 $('#limpar-filtros').addEventListener('click', () => {
