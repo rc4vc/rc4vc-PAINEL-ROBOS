@@ -266,7 +266,7 @@ export function avisar({ titulo, texto = '', estado = 'info', rotulo = 'Entendi'
  * `enviar(valores)` (opcional): async; se levantar erro, a mensagem aparece
  * no diálogo e ele continua aberto. Resolve com os valores, ou null se cancelado.
  */
-export function formulario({ titulo, texto = '', icone = 'pencil-square', campos = [], rotuloConfirmar = 'Salvar', enviar = null, tamanho = null }) {
+export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-square', campos = [], rotuloConfirmar = 'Salvar', enviar = null, tamanho = null }) {
     return new Promise((resolver) => {
         const prefixo = `f-${Math.random().toString(36).slice(2)}`;
         const campoHtml = (c) => {
@@ -289,7 +289,7 @@ export function formulario({ titulo, texto = '', icone = 'pencil-square', campos
         };
         const dialogo = criarDialogo({
             titulo, icone, tamanho,
-            corpo: html`<div class="pilha">${texto ? html`<p class="sem-margem">${texto}</p>` : ''}${campos.map(campoHtml)}
+            corpo: html`<div class="pilha">${texto ? html`<p class="sem-margem">${texto}</p>` : ''}${extra || ''}${campos.map(campoHtml)}
                 <div class="aviso oculto" data-estado="falha" role="alert" data-erro><i class="bi bi-exclamation-octagon"></i><div data-erro-texto></div></div></div>`,
             rodape: html`<button type="button" class="btn btn-fantasma" data-fechar>Cancelar</button>
                 <button type="submit" class="btn btn-primaria" data-confirmar>${rotuloConfirmar}</button>`,
