@@ -2,7 +2,7 @@
 // do "Em construção" da Central, só leitura, sem banner e sem os robôs que já
 // estão ativos (09-10-2026). Só a API pública construcoes-publicas.
 
-import { html, montar, erroEmBloco } from '../core/ui.js';
+import { html, montar, $, erroEmBloco } from '../core/ui.js';
 import { relativo } from '../core/format.js';
 import { aCada } from '../core/atualizacao.js';
 
@@ -37,6 +37,10 @@ async function obterDados() {
     return obter(FONTE);
 }
 
+// O mesmo link da aba "Ao vivo", a primeira das abas (no site estático o
+// endereço é outro).
+const LINK_AO_VIVO = document.querySelector('.abas-publicas a')?.getAttribute('href') || '/dashboard-publico';
+
 const recentes = (lista) => lista.slice().sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em)));
 
 
@@ -56,13 +60,28 @@ function seguradoraCurta(s) {
 // pública e "atualizado há X". Só leitura: sem arrastar, mover ou editar.
 // Mesma estrutura de em_construcao.js; mudou lá, mudar aqui.
 function desenharQuadro(q) {
-    montar('#quadro', COLUNAS.map(([chave, titulo, icone]) => {
-        // Robôs ativos (fichas que vêm do cadastro, com rpa_id) ficam fora do
-        // quadro (09-10-2026, pedido do responsável): o Kanban mostra o que
-        // está sendo construído; quem já roda é acompanhado no Painel ao vivo.
-        const fichas = recentes((q[chave] || []).filter((x) => !x.rpa_id));
+    // Robôs ativos (fichas que vêm do cadastro, com rpa_id) ficam fora do
+    // quadro (09-10-2026, pedido do responsável): o Kanban mostra o que
+    // está sendo construído; quem já roda é acompanhado no Painel ao vivo.
+    const fichasDe = (chave) => recentes((q[chave] || []).filter((x) => !x.rpa_id));
+    const ativos = COLUNAS.reduce((n, [chave]) => n + (q[chave] || []).filter((x) => x.rpa_id).length, 0);
+    // Quadro vazio (13-10-2026, análise de leitura por quem nunca viu a tela):
+    // 4 colunas com "Nada aqui." pareciam tela quebrada. Uma frase no lugar.
+    if (COLUNAS.every(([chave]) => !fichasDe(chave).length)) {
+        $('#quadro').classList.add('kanban-vazio');
+        montar('#quadro', html`<div class="vazio">
+            <i class="bi bi-check2-circle" aria-hidden="true"></i>
+            <strong>Nenhuma automação nova em construção agora.</strong>
+            <p>${ativos ? `As ${ativos} que já rodam sozinhas` : 'As que já rodam sozinhas'} estão em <a href="${LINK_AO_VIVO}">Ao vivo</a>.</p>
+        </div>`);
+        return;
+    }
+    $('#quadro').classList.remove('kanban-vazio');
+    montar('#quadro', COLUNAS.map(([chave, titulo, icone, sentido]) => {
+        const fichas = fichasDe(chave);
         return html`<section class="kanban-coluna" data-coluna="${chave}" aria-labelledby="col-${chave}">
             <div class="kanban-coluna-topo"><i class="bi bi-${icone}" aria-hidden="true"></i><h2 id="col-${chave}">${titulo}</h2><span class="selo kanban-contagem" data-estado="neutro">${fichas.length}</span></div>
+            <p class="kanban-coluna-sentido">${sentido}</p>
             ${fichas.length ? fichas.map((x) => html`<article class="kanban-ficha">
                 <h3>${x.tipo_rpa} · ${seguradoraCurta(x.seguradora)}</h3>
                 ${x.descricao ? html`<p>${x.descricao}</p>` : ''}

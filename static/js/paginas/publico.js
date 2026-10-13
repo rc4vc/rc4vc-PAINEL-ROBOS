@@ -11,8 +11,11 @@ import { lerFiltros, gravarFiltros, ligarSegmentado } from '../core/filtros.js';
 
 const SISTEMAS = '__sistemas';
 const PADROES = { periodo: 'hoje', seguradora: '', tipo: '', situacao: '' };
-const TIPO_TEXTO = { cotacao: 'de cotação', renovacao: 'de renovação', outros: 'de operação' };
-const SITUACAO_TEXTO = { problema: 'com problema', rodando: 'rodando agora', ok: 'que deram certo na última vez' };
+const TIPO_TEXTO = { cotacao: 'de cotação', renovacao: 'de renovação', outros: 'de apólices e relatórios' };
+const SITUACAO_TEXTO = { problema: 'que pedem atenção', rodando: 'rodando agora', ok: 'que deram certo na última vez' };
+// "Sistemas nossos" virou "Sistemas internos" (13-10-2026, análise de leitura
+// por quem nunca viu a tela: "nossos" não dizia o que eram).
+const NOME_SISTEMAS = 'Sistemas internos';
 
 const filtros = lerFiltros(PADROES);
 let dados = null;
@@ -58,7 +61,7 @@ function seguradorasDisponiveis() {
 }
 
 function rotuloSeguradora(valor) {
-    if (valor === SISTEMAS) return 'Sistemas nossos';
+    if (valor === SISTEMAS) return NOME_SISTEMAS;
     return seguradorasDisponiveis().find(([k]) => k === valor)?.[1] || valor;
 }
 
@@ -102,6 +105,22 @@ function precisaAtencao(r) {
     return motivosAtencao(r);
 }
 
+/** Oscilou (13-10-2026): não pede atenção pela regra da tela Hoje (a última
+ *  execução deu certo), mas falhou na maior parte do período — 2 falhas ou
+ *  mais e menos de 70% deram certo. Sem isso a manchete dizia "em dia" para a
+ *  Porto com 2 de 3 execuções falhando. Só rótulo: não entra na contagem de
+ *  "pede atenção", que continua a mesma da tela Hoje. */
+function oscilou(r) {
+    if (r.travado || motivosAtencao(r).length) return false;
+    const [ok, falhas] = contagens(r).atual;
+    return falhas >= 2 && taxaDe([ok, falhas]) < 0.7;
+}
+
+const textoOscilou = (r) => {
+    const [ok, falhas] = contagens(r).atual;
+    return `${falhas} de ${ok + falhas} execuções falharam`;
+};
+
 // --- Frases ---------------------------------------------------------------------------
 function textoPeriodo() {
     return { hoje: 'Hoje, até agora', 7: 'Nos últimos 7 dias', 30: 'Nos últimos 30 dias' }[filtros.periodo];
@@ -115,20 +134,17 @@ function textoEscopo(lista) {
     if (lista.length === 1) return `o robô ${lista[0].nome}`;
     const partes = [`os ${lista.length} robôs`];
     if (filtros.tipo) partes.push(TIPO_TEXTO[filtros.tipo]);
-    if (filtros.seguradora === SISTEMAS) partes.push('de sistemas nossos');
+    if (filtros.seguradora === SISTEMAS) partes.push('de sistemas internos');
     else if (filtros.seguradora) partes.push(`da ${rotuloSeguradora(filtros.seguradora)}`);
     if (filtros.situacao) partes.push(SITUACAO_TEXTO[filtros.situacao]);
     return partes.join(' ');
 }
 
+const TEXTO_ANTERIOR_FRASE = { hoje: 'Ontem, até esta hora', 7: 'Nos 7 dias anteriores', 30: 'Nos 30 dias anteriores' };
+
 /** Complemento de "acima/abaixo" nas notas dos números. */
 function textoVs() {
     return { hoje: 'de ontem até esta hora', 7: 'dos 7 dias anteriores', 30: 'dos 30 dias anteriores' }[filtros.periodo];
-}
-
-function variacao(atual, anterior) {
-    if (!anterior) return null;
-    return (atual - anterior) / anterior;
 }
 
 // --- Desenho --------------------------------------------------------------------------
@@ -139,20 +155,21 @@ function kpi(id, valor, nota, estado) {
     if (estado) el.dataset.estado = estado; else delete el.dataset.estado;
 }
 
-function tendencia(delta, { pontos = false, bomQuandoSobe = true } = {}) {
-    if (delta === null || delta === undefined || Number.isNaN(delta)) return html`<span class="fraco">sem base para comparar</span>`;
-    const valor = Math.round(delta * 100);
-    if (valor === 0) return html`<span class="tendencia" data-direcao="igual"><i class="bi bi-dash"></i>igual a ${REFERENCIA_CURTA[filtros.periodo]}</span>`;
-    const sobe = valor > 0;
+/** Nota de comparação: o VALOR do período anterior, com a seta (13-10-2026:
+ *  "−5 pontos vs ontem" pedia conta; "ontem, mesma hora: 92%" não). */
+function comparacao(atual, anterior, textoAnterior, { bomQuandoSobe = true } = {}) {
+    if (anterior === null || anterior === undefined) return html`<span class="fraco">sem base para comparar</span>`;
+    const ref = REFERENCIA_CURTA[filtros.periodo];
+    if (Math.round(atual * 100) === Math.round(anterior * 100)) {
+        return html`<span class="tendencia" data-direcao="igual" title="Igual ${textoVs()}"><i class="bi bi-dash"></i>${ref}: ${textoAnterior}</span>`;
+    }
+    const sobe = atual > anterior;
     // bomQuandoSobe = null: só informa (mais ou menos execuções não é bom nem ruim).
     const bom = bomQuandoSobe === null ? 'neutro' : String(sobe === bomQuandoSobe);
-    // Nota curta (13-10-2026: os números dividem a linha com a manchete); a
-    // frase inteira fica no title.
-    const quanto = pontos ? plural(Math.abs(valor), 'ponto', 'pontos') : `${Math.abs(valor)}%`;
-    return html`<span class="tendencia" data-direcao="${sobe ? 'sobe' : 'desce'}" data-bom="${bom}" title="${quanto} ${sobe ? 'acima' : 'abaixo'} ${textoVs()}"><i class="bi bi-arrow-${sobe ? 'up' : 'down'}-right"></i>${sobe ? '+' : '−'}${quanto} vs ${REFERENCIA_CURTA[filtros.periodo]}</span>`;
+    return html`<span class="tendencia" data-direcao="${sobe ? 'sobe' : 'desce'}" data-bom="${bom}" title="${sobe ? 'Acima' : 'Abaixo'} ${textoVs()}, que foi ${textoAnterior}"><i class="bi bi-arrow-${sobe ? 'up' : 'down'}-right"></i>${ref}: ${textoAnterior}</span>`;
 }
 
-const REFERENCIA_CURTA = { hoje: 'ontem', 7: '7 dias antes', 30: '30 dias antes' };
+const REFERENCIA_CURTA = { hoje: 'ontem, mesma hora', 7: '7 dias antes', 30: '30 dias antes' };
 
 // Manchete (09-10-2026): começa pela RESPOSTA — quantos pedem atenção e
 // quantos estão em dia —, só com as cores de estado (vermelho/verde). O
@@ -167,49 +184,43 @@ function desenharManchete(lista, totais, atencao) {
         return;
     }
     const taxa = taxaDe(totais.atual);
-    const emDia = lista.length - atencao.length;
+    const instaveis = lista.filter(oscilou);
+    const emDia = lista.length - atencao.length - instaveis.length;
     const umSo = lista.length === 1;
     let texto;
     if (umSo) {
-        texto = atencao.length
-            ? html`${textoPeriodo()}, <span class="destaque-falha">${lista[0].nome} pede atenção</span>.`
-            : html`${textoPeriodo()}, <span class="destaque-ok">${lista[0].nome} está em dia</span>.`;
-    } else if (!atencao.length) {
+        if (atencao.length) texto = html`${textoPeriodo()}, <span class="destaque-falha">${lista[0].nome} pede atenção</span>.`;
+        else if (instaveis.length) texto = html`${textoPeriodo()}, <span class="destaque-atencao">${lista[0].nome} oscilou</span>: ${textoOscilou(lista[0])}.`;
+        else texto = html`${textoPeriodo()}, <span class="destaque-ok">${lista[0].nome} está em dia</span>.`;
+    } else if (!atencao.length && !instaveis.length) {
         texto = html`${textoPeriodo()}, <span class="destaque-ok">${textoEscopo(lista)} estão em dia</span>. Nenhum pede atenção.`;
     } else {
-        texto = html`${textoPeriodo()}, <span class="destaque-falha">${atencao.length} de ${lista.length} robôs ${atencao.length === 1 ? 'pede' : 'pedem'} atenção</span>.${emDia
-            ? html` ${emDia === 1 ? 'O outro está' : `Os outros ${emDia} estão`} <span class="destaque-ok">em dia</span>.` : ''}`;
+        // "dos 17 robôs, 1 pede atenção, 1 oscilou e 15 estão em dia" (13-10-2026).
+        const partes = [];
+        if (atencao.length) partes.push(html`<span class="destaque-falha">${atencao.length} ${atencao.length === 1 ? 'pede' : 'pedem'} atenção</span>`);
+        if (instaveis.length) partes.push(html`<span class="destaque-atencao">${instaveis.length} ${instaveis.length === 1 ? 'oscilou' : 'oscilaram'}</span>`);
+        if (emDia) partes.push(html`<span class="destaque-ok">${emDia} ${emDia === 1 ? 'está' : 'estão'} em dia</span>`);
+        const juntas = partes.length > 1 ? html`${partes.slice(0, -1).map((p, i) => html`${i ? ', ' : ''}${p}`)} e ${partes.at(-1)}` : partes[0];
+        texto = html`${textoPeriodo()}, dos ${lista.length} robôs, ${juntas}.`;
     }
     montar('#manchete-texto', texto);
 
-    // Quem pede atenção, pelo nome (até 2), e o volume do período.
-    const nomes = atencao.slice(0, 2).map((a) => a.robo.nome);
-    const quem = atencao.length
-        ? `${atencao.length === 1 ? 'É' : 'São'} ${nomes.join(' e ')}${atencao.length > 2 ? ` e mais ${atencao.length - 2}` : ''}. `
-        : '';
+    // Quem pede atenção e quem oscilou, pelo nome; depois o volume do período
+    // e, numa frase à parte, o mesmo dado do período anterior (sem "pontos").
+    const nomes = (itens) => `${itens.slice(0, 2).join(' e ')}${itens.length > 2 ? ` e mais ${itens.length - 2}` : ''}`;
+    const quem = [
+        atencao.length ? `Pede atenção: ${nomes(atencao.map((a) => a.robo.nome))}.` : '',
+        instaveis.length && !umSo ? `Oscilou: ${nomes(instaveis.map((r) => `${r.nome} (${textoOscilou(r)})`))}.` : '',
+    ].filter(Boolean).join(' ');
     const volume = execs
         ? `${plural(execs, 'execução', 'execuções')}${taxa === null ? '' : `, ${percentual(taxa)} deram certo`}`
         : 'Nenhuma execução no período';
     const [okAnt, falhasAnt] = totais.anterior;
     const execsAnt = okAnt + falhasAnt;
-    let contexto;
-    if (!execsAnt) {
-        contexto = `${volume}. Não houve execução ${textoAnterior()} para comparar.`;
-    } else if (!execs) {
-        contexto = `${volume}; ${textoAnterior()} foram ${plural(execsAnt, 'execução', 'execuções')}.`;
-    } else {
-        const v = variacao(execs, execsAnt);
-        const ritmo = Math.round(v * 100) === 0 ? `o mesmo ritmo de ${textoAnterior()}`
-            : `${Math.abs(Math.round(v * 100))}% ${v > 0 ? 'a mais' : 'a menos'} que ${textoAnterior()} (${numero(execsAnt)})`;
-        const taxaAnt = taxaDe(totais.anterior);
-        let qualidade = '';
-        if (taxa !== null && taxaAnt !== null) {
-            const pts = Math.round((taxa - taxaAnt) * 100);
-            qualidade = pts === 0 ? ', com a mesma taxa de acerto' : `, e a taxa de acerto ${pts > 0 ? 'subiu' : 'caiu'} ${plural(Math.abs(pts), 'ponto', 'pontos')}`;
-        }
-        contexto = `${volume}: ${ritmo}${qualidade}.`;
-    }
-    $('#manchete-contexto').textContent = `${quem}${contexto}`;
+    const anterior = execsAnt
+        ? `${TEXTO_ANTERIOR_FRASE[filtros.periodo]}: ${plural(execsAnt, 'execução', 'execuções')}, ${percentual(taxaDe(totais.anterior))} deram certo.`
+        : `Não houve execução ${textoAnterior()} para comparar.`;
+    $('#manchete-contexto').textContent = [quem, `${volume}.`, anterior].filter(Boolean).join(' ');
     // Pausa dos robôs (notebook fora da empresa): só desde quando, sem nome.
     // Quem está rodando fica só no número "Rodando agora" (13-10-2026: aparecia
     // nos dois lugares).
@@ -226,11 +237,12 @@ function desenharNumeros(lista, totais) {
     const [ok, falhas] = totais.atual;
     const execs = ok + falhas;
     const execsAnt = totais.anterior[0] + totais.anterior[1];
-    kpi('kpi-execucoes', html`${numero(execs)}`, tendencia(variacao(execs, execsAnt), { bomQuandoSobe: null }));
+    kpi('kpi-execucoes', html`${numero(execs)}`,
+        comparacao(execs, execsAnt || null, numero(execsAnt), { bomQuandoSobe: null }));
     const taxa = taxaDe(totais.atual);
     const taxaAnt = taxaDe(totais.anterior);
     kpi('kpi-taxa', html`${percentual(taxa)}`,
-        taxa === null ? 'nenhuma execução no período' : tendencia(taxaAnt === null ? null : taxa - taxaAnt, { pontos: true }),
+        taxa === null ? 'nenhuma execução no período' : comparacao(taxa, taxaAnt, taxaAnt === null ? '' : percentual(taxaAnt)),
         taxa === null ? null : (taxa >= 0.9 ? 'ok' : (taxa >= 0.7 ? 'atencao' : 'falha')));
     // "Pedem atenção" saiu dos números (13-10-2026): a manchete já responde.
     const rodando = lista.filter((r) => r.rodando);
@@ -319,20 +331,20 @@ function desenharAtencao(atencao) {
     }
     const falharam = atencao.filter((a) => a.robo.ultimo_status === 'erro' && !a.robo.travado).length;
     montar('#frase-atencao', html`${plural(atencao.length, 'robô merece', 'robôs merecem')} um olhar${falharam
-        ? html`; <strong class="texto-falha">${falharam} ${falharam === 1 ? 'falhou' : 'falharam'} na última tentativa</strong>` : ''}. Quem entrou na Central vê o motivo e o que fazer em Ocorrências.`);
+        ? html`; <strong class="texto-falha">${falharam} ${falharam === 1 ? 'falhou' : 'falharam'} na última tentativa</strong>` : ''}.`);
     montar('#lista-atencao', html`<div class="cartao"><div class="lista-itens">${atencao.map(({ robo, motivos, taxa }) => html`
         <div class="item">
             <span class="item-icone" data-estado="${robo.ultimo_status === 'erro' || robo.travado ? 'falha' : 'atencao'}"><i class="bi bi-${robo.travado ? 'hourglass-split' : (robo.ultimo_status === 'erro' ? 'x-octagon' : 'graph-down-arrow')}"></i></span>
             <span style="min-width:0"><span class="item-titulo">${robo.nome}</span><br>
                 <span class="item-texto">${motivos.join(' · ')}</span></span>
-            <span class="item-meta">${robo.ultima_execucao_em ? `última ${relativo(robo.ultima_execucao_em)}` : ''}${taxa !== null ? html`<br>${percentual(taxa)} no período` : ''}</span>
+            <span class="item-meta">${robo.ultima_execucao_em ? `última ${relativo(robo.ultima_execucao_em)}` : ''}${taxa !== null ? html`<br>${percentual(taxa)} deu certo no período` : ''}</span>
         </div>`)}</div></div>`);
 }
 
 // Robô por robô: histórico das versões em docs/HISTORICO.md (blocos iguais,
 // colunas, linhas; desde 13-10-2026, um cartão-história por seguradora).
 function seguradorasDoRobo(r) {
-    if (r.sistema_nosso) return 'Sistemas nossos';
+    if (r.sistema_nosso) return NOME_SISTEMAS;
     const nomes = [...new Set(r.seguradoras.map(nomeSeguradora))];
     return nomes.length ? nomes.join(', ') : '—';
 }
@@ -355,6 +367,7 @@ function situacaoDoRobo(r, execucoes) {
     if (r.rodando) return ['rodando', 'Rodando agora'];
     if (r.ultimo_status === 'erro') return ['falha', 'Falhou na última'];
     if (motivosAtencao(r).length) return ['atencao', 'Pede atenção'];
+    if (oscilou(r)) return ['atencao', 'Oscilou'];
     if (!execucoes) {
         if (sobDemanda(r)) return ['neutro', 'Sob demanda'];
         if (filtros.periodo !== 'hoje') return ['neutro', 'Não rodou no período'];
@@ -367,6 +380,7 @@ function situacaoDoRobo(r, execucoes) {
 function metaDoRobo(r, [estado, etiqueta]) {
     const ultima = r.ultima_execucao_em ? relativo(r.ultima_execucao_em) : null;
     if (r.rodando) return 'rodando agora';
+    if (oscilou(r)) return `oscilou · ${textoOscilou(r)}`;
     if (estado === 'falha' || estado === 'atencao') return ultima ? `${etiqueta.toLowerCase()} · ${ultima}` : etiqueta.toLowerCase();
     // A última execução de quem roda sob demanda vai no title da linha.
     if (sobDemanda(r) && estado === 'neutro') return 'sob demanda';
@@ -419,14 +433,14 @@ function desenharRobos(lista) {
     // responsável: "refazer pensando na clareza e objetividade, com
     // storytelling"): a situação num selo, UMA frase com a resposta, o anel
     // com quanto deu certo e a lista dos robôs, um por linha, com o fato que
-    // importa sobre cada um. Quem pede atenção primeiro; Sistemas nossos no fim.
+    // importa sobre cada um. Quem pede atenção primeiro; Sistemas internos no fim.
     const ordem = [...grupos.values()].map(resumoDoGrupo)
         .sort((a, b) => (a.sistema - b.sistema) || (PESO_GRUPO[a.estado] - PESO_GRUPO[b.estado]) || a.nome.localeCompare(b.nome, 'pt-BR'));
     montar('#lista-robos', ordem.map(cartaoDaSeguradora));
 }
 
-const PESO_GRUPO = { falha: 0, atencao: 0, rodando: 1, ok: 2, neutro: 3 };
-const SELO_GRUPO = { falha: 'Pede atenção', atencao: 'Pede atenção', rodando: 'Rodando agora', ok: 'Em dia', neutro: 'Sem execução' };
+const PESO_GRUPO = { falha: 0, atencao: 0, oscilou: 1, rodando: 2, ok: 3, neutro: 4 };
+const SELO_GRUPO = { falha: 'Pede atenção', atencao: 'Pede atenção', oscilou: 'Oscilou', rodando: 'Rodando agora', ok: 'Em dia', neutro: 'Sem execução' };
 const PERIODO_CURTO = { hoje: 'hoje', 7: 'em 7 dias', 30: 'em 30 dias' };
 
 /** A história de uma seguradora: estado, taxa e a frase que responde
@@ -435,7 +449,8 @@ function resumoDoGrupo(g) {
     const [ok, falhas] = somar(g.itens.map((i) => [i.ok, i.falhas]));
     const execucoes = ok + falhas;
     const taxa = taxaDe([ok, falhas]);
-    const problemas = g.itens.filter((i) => ['falha', 'atencao'].includes(i.situacao[0]));
+    const problemas = g.itens.filter((i) => ['falha', 'atencao'].includes(i.situacao[0]) && !oscilou(i.r));
+    const instaveis = g.itens.filter((i) => oscilou(i.r));
     const rodando = g.itens.filter((i) => i.r.rodando);
     const agendados = g.itens.filter((i) => !sobDemanda(i.r));
     const nome = (i) => nomeNoGrupo(i.r, g);
@@ -446,6 +461,11 @@ function resumoDoGrupo(g) {
         estado = problemas.some((i) => i.situacao[0] === 'falha') ? 'falha' : 'atencao';
         const motivo = motivosAtencao(p.r)[0] || p.situacao[1].toLowerCase();
         frase = `${nome(p)} ${motivo}${problemas.length > 1 ? ` (e mais ${problemas.length - 1})` : ''}.`;
+    } else if (instaveis.length) {
+        // Oscilou: a última deu certo, mas a maior parte do período falhou.
+        estado = 'oscilou';
+        const [p] = instaveis;
+        frase = `${nome(p)} oscilou: ${textoOscilou(p.r)} ${PERIODO_CURTO[filtros.periodo]}.${p.r.rodando ? ' Está rodando agora.' : ''}`;
     } else {
         const partes = [];
         if (rodando.length) partes.push(`${rodando.map(nome).join(' e ')} ${rodando.length === 1 ? 'está' : 'estão'} rodando agora`);
@@ -477,7 +497,7 @@ function cartaoDaSeguradora(g) {
 }
 
 /** Nome dentro do cartão da seguradora: sem ela (já está no título); em
- *  Sistemas nossos, o nome inteiro. */
+ *  Sistemas internos, o nome inteiro. */
 function nomeNoGrupo(r, grupo) {
     return grupo.sistema ? r.nome : nomeSemSeguradora(r);
 }
@@ -502,7 +522,7 @@ function linhaDoRobo({ r, situacao }, grupo) {
 
 function desenharFiltros(lista) {
     const sel = $('#filtro-seguradora');
-    const opcoes = [['', 'Todas'], ...seguradorasDisponiveis(), [SISTEMAS, 'Sistemas nossos']];
+    const opcoes = [['', 'Todas'], ...seguradorasDisponiveis(), [SISTEMAS, NOME_SISTEMAS]];
     if (sel.options.length !== opcoes.length) {
         montar(sel, opcoes.map(([v, t]) => html`<option value="${v}">${t}</option>`));
     }

@@ -1136,7 +1136,9 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
    agora" só quando há quem peça; filtros numa linha, sem caixa; títulos de
    seção sem número (o capítulo 1 sumia quando vazio). */
 .painel-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-4) var(--e-6); margin-bottom: var(--e-4); padding: var(--e-5) var(--e-6); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-xl); box-shadow: var(--sombra-1); }
-.painel-resumo .manchete { flex: 999 1 520px; min-width: 0; }
+.painel-resumo-texto { flex: 999 1 520px; min-width: 0; }
+.painel-intro { margin: var(--e-3) 0 0; padding-top: var(--e-2); border-top: 1px dashed var(--borda); color: var(--texto-3); font-size: var(--fs-xs); }
+.painel-secao-topo .painel-legenda { flex-basis: 100%; max-width: none; }
 .painel-resumo .painel-numeros { flex: 1 1 460px; min-width: 0; background: none; border: 0; border-left: 1px solid var(--borda); border-radius: 0; box-shadow: none; }
 .painel-resumo .kpi-rotulo { white-space: nowrap; }
 .painel-resumo .kpi-nota { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -1204,6 +1206,11 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
 .seg-cartao { display: flex; flex-direction: column; gap: var(--e-2); min-width: 0; padding: var(--e-4); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-lg); box-shadow: var(--sombra-1); }
 .seg-cartao[data-estado="falha"] { border-color: color-mix(in srgb, var(--falha) 55%, var(--borda)); background: color-mix(in srgb, var(--falha) 6%, var(--superficie)); }
 .seg-cartao[data-estado="atencao"] { border-color: color-mix(in srgb, var(--atencao) 55%, var(--borda)); }
+.seg-cartao[data-estado="oscilou"] { border-color: color-mix(in srgb, var(--atencao) 45%, var(--borda)); }
+/* "Oscilou" (falhou na maior parte do período, mas a última deu certo) usa a
+   cor e a forma de atenção (losango). */
+.ponto[data-estado="oscilou"] { background: var(--atencao); border-radius: 1px; transform: rotate(45deg) scale(0.9); }
+.seg-selo[data-estado="oscilou"] { color: var(--atencao); }
 .seg-cartao[data-estado="rodando"] { border-color: color-mix(in srgb, var(--rodando) 45%, var(--borda)); }
 .seg-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-3); }
 .seg-titulo { display: grid; gap: var(--e-1); min-width: 0; }
@@ -1246,6 +1253,11 @@ body:has(.kanban-quadro) .kanban-quadro { flex: 1; margin-bottom: 0; }
 .kanban-coluna-topo { display: flex; align-items: center; gap: var(--e-2); padding: var(--e-1) var(--e-2); }
 .kanban-coluna-topo h2 { margin: 0; font-size: var(--fs-sm); }
 .kanban-contagem { margin-left: auto; }
+.kanban-coluna-sentido { margin: calc(-1 * var(--e-2)) 0 0; padding: 0 var(--e-2); color: var(--texto-3); font-size: var(--fs-xs); }
+.quadro-intro { margin: 0 0 var(--e-4); color: var(--texto-2); font-size: var(--fs-sm); }
+/* Quadro sem nenhuma ficha: uma frase no lugar das 4 colunas vazias. */
+.kanban-quadro.kanban-vazio { display: block; flex: 0 0 auto; }
+.kanban-vazio .vazio { background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-lg); }
 .kanban-ficha { display: grid; gap: var(--e-2); padding: var(--e-3); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-md); box-shadow: var(--sombra-1); }
 .kanban-ficha h3 { margin: 0; font-size: var(--fs-sm); }
 .kanban-ficha p { margin: 0; color: var(--texto-2); font-size: var(--fs-xs); }
