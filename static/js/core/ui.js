@@ -273,6 +273,10 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
             const id = `${prefixo}-${c.nome}`;
             const req = c.obrigatorio ? 'required' : '';
             const ajuda = c.ajuda ? html`<span class="ajuda">${c.ajuda}</span>` : '';
+            // Vários campos numa linha só (ex.: as 3 negativas da planilha).
+            if (c.tipo === 'linha') {
+                return html`<div class="campo"><span class="rotulo">${c.rotulo}</span><div class="campos-em-linha">${c.campos.map(campoHtml)}</div>${ajuda}</div>`;
+            }
             if (c.tipo === 'caixa') {
                 return html`<label class="interruptor" for="${id}"><input type="checkbox" id="${id}" name="${c.nome}" ${c.valor ? 'checked' : ''}><span class="trilho"></span>${c.rotulo}</label>${ajuda}`;
             }
@@ -283,7 +287,7 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
                 controle = html`<select class="selecao" id="${id}" name="${c.nome}" ${req}>${(c.opcoes || []).map((o) => html`<option value="${o.valor}" ${String(o.valor) === String(c.valor ?? '') ? 'selected' : ''}>${o.rotulo}</option>`)}</select>`;
             } else {
                 const tipo = { numero: 'number', data: 'date', datahora: 'datetime-local', senha: 'password', email: 'email' }[c.tipo] || 'text';
-                controle = html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" value="${c.valor ?? ''}" placeholder="${c.placeholder || ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${req} autocomplete="off">`;
+                controle = html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" value="${c.valor ?? ''}" placeholder="${c.placeholder || ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${c.somenteLeitura ? 'readonly' : ''} ${req} autocomplete="off">`;
             }
             return html`<div class="campo"><label for="${id}">${c.rotulo}${c.obrigatorio ? html` <span class="fraco">*</span>` : ''}</label>${controle}${ajuda}</div>`;
         };
@@ -295,7 +299,8 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
                 <button type="submit" class="btn btn-primaria" data-confirmar>${rotuloConfirmar}</button>`,
         });
         const form = dialogo.querySelector('form');
-        const lerValores = () => Object.fromEntries(campos.map((c) => {
+        const todos = campos.flatMap((c) => (c.tipo === 'linha' ? c.campos : [c]));
+        const lerValores = () => Object.fromEntries(todos.map((c) => {
             const el = form.querySelector(`#${prefixo}-${c.nome}`);
             if (c.tipo === 'caixa') return [c.nome, el.checked];
             if (c.tipo === 'numero') return [c.nome, el.value === '' ? null : Number(el.value)];
@@ -304,7 +309,7 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
         let resultado = null;
         form.addEventListener('submit', async (ev) => {
             ev.preventDefault();
-            const faltando = campos.find((c) => c.obrigatorio && c.tipo !== 'caixa' && !form.querySelector(`#${prefixo}-${c.nome}`).value.trim());
+            const faltando = todos.find((c) => c.obrigatorio && c.tipo !== 'caixa' && !form.querySelector(`#${prefixo}-${c.nome}`).value.trim());
             const caixaErro = form.querySelector('[data-erro]');
             if (faltando) {
                 caixaErro.classList.remove('oculto');

@@ -363,6 +363,9 @@ a.cartao:hover { text-decoration: none; border-color: var(--borda-forte); box-sh
 .campo .rotulo { font-size: var(--fs-sm); font-weight: var(--peso-medio); color: var(--texto); }
 .campo .ajuda { font-size: var(--fs-xs); color: var(--texto-3); }
 .campo .erro { font-size: var(--fs-xs); color: var(--falha); }
+.campos-em-linha { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e-2); }
+.campos-em-linha .campo label { font-weight: var(--peso-normal, 400); color: var(--texto-3); }
+.campo input[readonly] { background: var(--superficie-2); color: var(--texto-3); }
 
 .entrada,
 .selecao,
