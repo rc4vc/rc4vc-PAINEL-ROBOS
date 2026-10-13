@@ -316,7 +316,7 @@ function desenharAtencao(atencao) {
 // colunas corridas); a tabela que veio depois foi recusada ("quero uma
 // visualização moderna e objetiva"). Cada bloco: a situação em destaque, um
 // anel com quanto deu certo no período e a última execução. Ordem: quem pede
-// atenção, quem está rodando, depois por seguradora; "Sistemas nossos" no fim.
+// atenção, quem está rodando, depois o nome. Agrupados por seguradora (13-10).
 function seguradorasDoRobo(r) {
     if (r.sistema_nosso) return 'Sistemas nossos';
     const nomes = [...new Set(r.seguradoras.map(nomeSeguradora))];
@@ -351,56 +351,94 @@ function anel(taxa, estado) {
     </svg>`;
 }
 
-// O resultado do período em palavras, ao lado do anel (09-10-2026: só o %
-// pedia interpretação).
-function textoExecucoes(ok, falhas) {
-    const total = ok + falhas;
-    if (!total) return filtros.periodo === 'hoje' ? 'Nenhuma execução hoje' : 'Nenhuma execução no período';
-    return `${ok} de ${total} ${ok === 1 ? 'deu' : 'deram'} certo`;
+// Ao lado do anel, só o rótulo da taxa (13-10-2026, pedido do responsável:
+// o "x de y deram certo" saiu; fica a taxa de sucesso).
+function textoTaxa(tx) {
+    if (tx === null) return 'Sem execução';
+    return 'Taxa de sucesso';
 }
 
+// Grupos do Robô por robô (13-10-2026, pedido do responsável: "quero que
+// seja agrupado por seguradora"): um título por seguradora, com a contagem e
+// quantos pedem atenção, em ordem alfabética e Sistemas nossos no fim. Dentro
+// do grupo, quem pede atenção primeiro (ordemDosRobos). Seguradoras com um
+// robô só dividem um grupo ("Fator, Mapfre, Porto e Tokio"), logo antes de
+// Sistemas nossos, para não sobrar uma linha quase vazia para cada uma; nesse
+// grupo o cartão volta a mostrar a seguradora.
 function desenharRobos(lista) {
     if (!lista.length) {
+        $('#lista-robos').style.setProperty('--colunas', 1);
         montar('#lista-robos', vazio('funnel', 'Nenhum robô neste recorte.', 'Troque os filtros acima.'));
         return;
     }
-    montar('#lista-robos', ordemDosRobos(lista).map((r) => {
+    const grupos = new Map();
+    ordemDosRobos(lista).forEach((r) => {
         const [ok, falhas] = contagens(r).atual;
-        const tx = taxaDe([ok, falhas]);
-        const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
-        const [estado, etiqueta] = situacaoDoRobo(r, ok + falhas);
-        const quando = r.rodando ? 'em execução agora' : (r.ultima_execucao_em ? `última ${relativo(r.ultima_execucao_em)}` : 'nunca rodou');
-        // Cartão que vira (09-10-2026, pedido do responsável): a FRENTE fica só
-        // com a situação, o nome e o anel grande; o VERSO, com o que o robô faz.
-        const frente = html`<span class="robo-face robo-bloco" data-estado="${estado}">
-            <span class="robo-bloco-topo">
-                <span class="robo-etiqueta" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span>${etiqueta}</span>
-                <span class="robo-seguradora">${seguradorasDoRobo(r)}${r.resumo ? html` <i class="bi bi-arrow-repeat robo-dica-icone" title="Toque para ver o que faz" aria-hidden="true"></i>` : ''}</span>
-            </span>
-            <span class="robo-bloco-nome">${r.nome}</span>
-            <span class="robo-bloco-pe">
-                <span class="robo-anel">${anel(tx, est)}<span class="robo-anel-valor">${tx === null ? '—' : percentual(tx)}</span></span>
-                <span class="robo-bloco-numeros"><strong>${textoExecucoes(ok, falhas)}</strong><span>${quando}</span></span>
-            </span>
-        </span>`;
-        const resultado = `${etiqueta}; ${textoExecucoes(ok, falhas).toLowerCase()}; ${quando}.`;
-        if (!r.resumo) {
-            return html`<li><div class="robo-cartao" role="group" aria-label="${r.nome}: ${resultado}"><span class="robo-miolo">${frente}</span></div></li>`;
-        }
-        const virado = virados.has(r.id);
-        return html`<li><button type="button" class="robo-cartao" data-vira="${r.id}" aria-pressed="${String(virado)}"
-                aria-label="${virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}: ${resultado} Toque para ver o que ele faz.`}">
-            <span class="robo-miolo">
-                ${frente}
-                <span class="robo-face robo-verso robo-bloco" data-estado="${estado}" aria-hidden="${String(!virado)}">
-                    <span class="robo-verso-rotulo">O que faz</span>
-                    <span class="robo-bloco-nome">${r.nome}</span>
-                    <span class="robo-verso-texto">${r.resumo}</span>
-                    <span class="robo-dica"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> toque para voltar</span>
-                </span>
-            </span>
-        </button></li>`;
+        const nome = seguradorasDoRobo(r);
+        if (!grupos.has(nome)) grupos.set(nome, { nome, sistema: r.sistema_nosso, itens: [] });
+        grupos.get(nome).itens.push({ r, ok, falhas, situacao: situacaoDoRobo(r, ok + falhas) });
+    });
+    let ordem = [...grupos.values()].sort((a, b) => (a.sistema - b.sistema) || a.nome.localeCompare(b.nome, 'pt-BR'));
+    const sozinhas = ordem.filter((g) => !g.sistema && g.itens.length === 1);
+    if (sozinhas.length > 1) {
+        const nomes = sozinhas.map((g) => g.nome);
+        const itens = sozinhas.map((g) => g.itens[0]);
+        const juntas = {
+            nome: `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}`,
+            sistema: false,
+            comSeguradora: true,
+            itens: ordemDosRobos(itens.map((i) => i.r)).map((r) => itens.find((i) => i.r === r)),
+        };
+        ordem = [...ordem.filter((g) => !sozinhas.includes(g) && !g.sistema), juntas, ...ordem.filter((g) => g.sistema)];
+    }
+    // Uma COLUNA por grupo (13-10-2026, pedido do responsável: "ao invés de
+    // linhas, coloque por colunas"), com os cartões empilhados.
+    const el = $('#lista-robos');
+    el.style.setProperty('--colunas', ordem.length);
+    montar(el, ordem.map((g) => {
+        const atencao = g.itens.filter((i) => ['falha', 'atencao'].includes(i.situacao[0])).length;
+        return html`<li class="robos-coluna">
+            <div class="robos-grupo"><i class="bi bi-${g.sistema ? 'gear' : 'building'}" aria-hidden="true"></i><h3>${g.nome}</h3><span class="robos-grupo-contagem">${plural(g.itens.length, 'robô', 'robôs')}</span>${atencao
+                ? html`<span class="robos-grupo-atencao">${atencao} ${atencao === 1 ? 'pede' : 'pedem'} atenção</span>` : ''}</div>
+            <ul class="robos-coluna-lista">${g.itens.map((i) => cartaoDoRobo(i, g.comSeguradora))}</ul>
+        </li>`;
     }));
+}
+
+function cartaoDoRobo({ r, ok, falhas, situacao: [estado, etiqueta] }, comSeguradora = false) {
+    const tx = taxaDe([ok, falhas]);
+    const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
+    const quando = r.rodando ? 'em execução agora' : (r.ultima_execucao_em ? `última ${relativo(r.ultima_execucao_em)}` : 'nunca rodou');
+    // Cartão que vira (09-10-2026, pedido do responsável): a FRENTE fica só
+    // com a situação, o nome e o anel grande; o VERSO, com o que o robô faz.
+    const frente = html`<span class="robo-face robo-bloco" data-estado="${estado}">
+        <span class="robo-bloco-topo">
+            <span class="robo-etiqueta" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span>${etiqueta}</span>
+            <span class="robo-seguradora">${comSeguradora ? `${seguradorasDoRobo(r)} ` : ''}${r.resumo ? html`<i class="bi bi-arrow-repeat robo-dica-icone" title="Toque para ver o que faz" aria-hidden="true"></i>` : ''}</span>
+        </span>
+        <span class="robo-bloco-nome">${r.nome}</span>
+        <span class="robo-bloco-pe">
+            <span class="robo-anel">${anel(tx, est)}<span class="robo-anel-valor">${tx === null ? '—' : percentual(tx)}</span></span>
+            <span class="robo-bloco-numeros"><strong>${textoTaxa(tx)}</strong><span>${quando}</span></span>
+        </span>
+    </span>`;
+    const resultado = `${etiqueta}; ${tx === null ? textoTaxa(tx).toLowerCase() : `taxa de sucesso ${percentual(tx)}`}; ${quando}.`;
+    if (!r.resumo) {
+        return html`<li><div class="robo-cartao" role="group" aria-label="${r.nome}: ${resultado}"><span class="robo-miolo">${frente}</span></div></li>`;
+    }
+    const virado = virados.has(r.id);
+    return html`<li><button type="button" class="robo-cartao" data-vira="${r.id}" aria-pressed="${String(virado)}"
+            aria-label="${virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}: ${resultado} Toque para ver o que ele faz.`}">
+        <span class="robo-miolo">
+            ${frente}
+            <span class="robo-face robo-verso robo-bloco" data-estado="${estado}" aria-hidden="${String(!virado)}">
+                <span class="robo-verso-rotulo">O que faz</span>
+                <span class="robo-bloco-nome">${r.nome}</span>
+                <span class="robo-verso-texto">${r.resumo}</span>
+                <span class="robo-dica"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> toque para voltar</span>
+            </span>
+        </span>
+    </button></li>`;
 }
 
 function desenharFiltros(lista) {
