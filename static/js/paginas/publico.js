@@ -205,14 +205,19 @@ function desenharManchete(lista, totais, atencao) {
         contexto = `${volume}: ${ritmo}${qualidade}.`;
     }
     $('#manchete-contexto').textContent = `${quem}${contexto}`;
-    const rodando = lista.filter((r) => r.rodando);
     // Pausa dos robôs (notebook fora da empresa): só desde quando, sem nome.
-    montar('#manchete-rodape', html`
-        ${dados.pausado_desde ? html`<span><i class="bi bi-pause-circle"></i> Robôs pausados desde ${hora(dados.pausado_desde)}</span>` : ''}
-        <span><span class="ponto" data-estado="${rodando.length ? 'rodando' : 'neutro'}"></span> ${rodando.length ? `${plural(rodando.length, 'robô rodando', 'robôs rodando')} agora: ${rodando.map((r) => r.nome).join(', ')}` : 'Nenhum robô rodando neste momento'}</span>`);
+    // Quem está rodando fica só no número "Rodando agora" (13-10-2026: aparecia
+    // nos dois lugares).
+    montar('#manchete-rodape', dados.pausado_desde
+        ? html`<span><i class="bi bi-pause-circle"></i> Robôs pausados desde ${hora(dados.pausado_desde)}</span>` : '');
 }
 
-function desenharNumeros(lista, totais, atencao) {
+/** Próximo horário previsto hoje entre os robôs da lista ("HH:MM"), ou null. */
+function proximaDaLista(lista) {
+    return lista.map((r) => r.proxima_hoje).filter(Boolean).sort()[0] || null;
+}
+
+function desenharNumeros(lista, totais) {
     const [ok, falhas] = totais.atual;
     const execs = ok + falhas;
     const execsAnt = totais.anterior[0] + totais.anterior[1];
@@ -222,16 +227,21 @@ function desenharNumeros(lista, totais, atencao) {
     kpi('kpi-taxa', html`${percentual(taxa)}`,
         taxa === null ? 'nenhuma execução no período' : tendencia(taxaAnt === null ? null : taxa - taxaAnt, { pontos: true }),
         taxa === null ? null : (taxa >= 0.9 ? 'ok' : (taxa >= 0.7 ? 'atencao' : 'falha')));
-    kpi('kpi-atencao', html`${atencao.length}<small>/${lista.length}</small>`,
-        atencao.length ? `${plural(falhas, 'falha', 'falhas')} no período` : 'todos em dia', atencao.length ? 'falha' : 'ok');
-    const rodando = lista.filter((r) => r.rodando).length;
-    kpi('kpi-rodando', html`${rodando}`, rodando ? 'neste momento' : 'nenhum neste momento');
+    // "Pedem atenção" saiu dos números (13-10-2026): a manchete já responde.
+    const rodando = lista.filter((r) => r.rodando);
+    const proxima = proximaDaLista(lista);
+    let nota = 'nenhum neste momento';
+    if (rodando.length) nota = rodando.map((r) => r.nome).join(', ');
+    else if (proxima) nota = `próximo às ${proxima}`;
+    kpi('kpi-rodando', html`${rodando.length}`, nota, rodando.length ? 'rodando' : null);
+    document.getElementById('kpi-rodando').title = rodando.length ? nota : '';
 }
 
 function serieDoRitmo(lista) {
     if (filtros.periodo === 'hoje') {
-        const h = new Date().getHours();
-        const rotulos = Array.from({ length: h + 1 }, (_, i) => `${String(i).padStart(2, '0')}h`);
+        // O dia inteiro (13-10-2026): as horas que ainda não chegaram ficam
+        // vazias, para dar a noção de quanto do dia já passou.
+        const rotulos = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}h`);
         const valores = rotulos.map((_, i) => somar(lista.map((r) => r.horas_hoje[i])));
         return { rotulos, valores, unidade: 'hora' };
     }
@@ -293,10 +303,13 @@ function desenharRitmo(lista) {
     });
 }
 
+// "Pede atenção agora" só aparece quando alguém pede (13-10-2026): vazio, o
+// bloco repetia a manchete e ocupava 265 px.
 function desenharAtencao(atencao) {
+    $('#atencao').hidden = !atencao.length;
     if (!atencao.length) {
         $('#frase-atencao').textContent = '';
-        montar('#lista-atencao', vazio('check2-circle', 'Nenhum robô pede atenção neste recorte.', 'Nenhum falhou hoje, travou ou deixou de rodar no horário.'));
+        montar('#lista-atencao', '');
         return;
     }
     const falharam = atencao.filter((a) => a.robo.ultimo_status === 'erro' && !a.robo.travado).length;
@@ -324,21 +337,48 @@ function seguradorasDoRobo(r) {
 }
 
 function ordemDosRobos(lista) {
-    const peso = (r) => (r.travado || motivosAtencao(r).length ? 0 : r.rodando ? 1 : 2);
+    // Sob demanda por último no grupo (13-10-2026).
+    const peso = (r) => (r.travado || motivosAtencao(r).length ? 0 : r.rodando ? 1 : sobDemanda(r) ? 3 : 2);
     return lista.slice().sort((a, b) => peso(a) - peso(b)
         || (a.sistema_nosso - b.sistema_nosso)
         || seguradorasDoRobo(a).localeCompare(seguradorasDoRobo(b), 'pt-BR')
         || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
-/** Situação do bloco: [estado, texto da etiqueta]. */
+const sobDemanda = (r) => r.modo === 'sob_demanda';
+
+/** Situação do bloco: [estado, texto da etiqueta]. Robô sob demanda que não
+ *  rodou não é "Não rodou hoje" (13-10-2026): é o normal dele. */
 function situacaoDoRobo(r, execucoes) {
     if (r.travado) return ['falha', 'Parece travado'];
     if (r.rodando) return ['rodando', 'Rodando agora'];
     if (r.ultimo_status === 'erro') return ['falha', 'Falhou na última'];
     if (motivosAtencao(r).length) return ['atencao', 'Pede atenção'];
-    if (!execucoes) return ['neutro', filtros.periodo === 'hoje' ? 'Não rodou hoje' : 'Não rodou no período'];
+    if (!execucoes) {
+        if (sobDemanda(r)) return ['neutro', 'Sob demanda'];
+        if (filtros.periodo !== 'hoje') return ['neutro', 'Não rodou no período'];
+        return ['neutro', r.roda_hoje ? 'Ainda não rodou hoje' : 'Não rodou hoje'];
+    }
     return ['ok', 'Deu certo'];
+}
+
+/** Segunda metade da linha de situação: quando rodou (ou quando vai rodar). */
+function quandoDoRobo(r, estado) {
+    if (r.rodando) return 'em execução';
+    if (estado === 'neutro' && !sobDemanda(r) && r.proxima_hoje && filtros.periodo === 'hoje') return `próxima às ${r.proxima_hoje}`;
+    if (!r.ultima_execucao_em) return 'nunca rodou';
+    return `${sobDemanda(r) ? 'última ' : ''}${relativo(r.ultima_execucao_em)}`;
+}
+
+/** Nome sem a seguradora que já está no título da coluna
+ *  ("Apólices e comissão Akad" -> "Apólices e comissão"). */
+function nomeSemSeguradora(r) {
+    let nome = r.nome;
+    r.seguradoras.forEach((s) => {
+        const sem = nome.replace(new RegExp(`\\s*[-–·]?\\s*${s.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '');
+        if (sem.trim()) nome = sem.trim();
+    });
+    return nome;
 }
 
 // Anel de 0 a 100%: o quanto deu certo no período.
@@ -349,13 +389,6 @@ function anel(taxa, estado) {
         <circle cx="24" cy="24" r="20" class="anel-fundo"></circle>
         ${cheio > 0 ? html`<circle cx="24" cy="24" r="20" class="anel-valor" data-estado="${estado}" stroke-dasharray="${cheio.toFixed(1)} ${CIRCUNFERENCIA.toFixed(1)}"></circle>` : ''}
     </svg>`;
-}
-
-// Ao lado do anel, só o rótulo da taxa (13-10-2026, pedido do responsável:
-// o "x de y deram certo" saiu; fica a taxa de sucesso).
-function textoTaxa(tx) {
-    if (tx === null) return 'Sem execução';
-    return 'Taxa de sucesso';
 }
 
 // Grupos do Robô por robô (13-10-2026, pedido do responsável: "quero que
@@ -400,29 +433,37 @@ function desenharRobos(lista) {
         return html`<li class="robos-coluna">
             <div class="robos-grupo"><i class="bi bi-${g.sistema ? 'gear' : 'building'}" aria-hidden="true"></i><h3>${g.nome}</h3><span class="robos-grupo-contagem">${plural(g.itens.length, 'robô', 'robôs')}</span>${atencao
                 ? html`<span class="robos-grupo-atencao">${atencao} ${atencao === 1 ? 'pede' : 'pedem'} atenção</span>` : ''}</div>
-            <ul class="robos-coluna-lista">${g.itens.map((i) => cartaoDoRobo(i, g.comSeguradora))}</ul>
+            <ul class="robos-coluna-lista">${g.itens.map((i) => cartaoDoRobo(i, g))}</ul>
         </li>`;
     }));
 }
 
-function cartaoDoRobo({ r, ok, falhas, situacao: [estado, etiqueta] }, comSeguradora = false) {
+/** Nome no cartão: na coluna de uma seguradora, sem ela; na coluna que junta
+ *  várias, a seguradora na frente; em Sistemas nossos, o nome inteiro. */
+function nomeNoCartao(r, grupo) {
+    if (grupo.sistema) return r.nome;
+    const curto = nomeSemSeguradora(r);
+    if (!grupo.comSeguradora) return curto;
+    return html`${seguradorasDoRobo(r)} <small>· ${curto}</small>`;
+}
+
+// Cartão compacto (13-10-2026): a situação e quando numa linha, o nome
+// embaixo e um anel pequeno à direita. Sob demanda: borda tracejada e sem
+// anel. O cartão continua virando para mostrar o que o robô faz.
+function cartaoDoRobo({ r, ok, falhas, situacao: [estado, etiqueta] }, grupo) {
     const tx = taxaDe([ok, falhas]);
     const est = tx === null ? 'neutro' : (tx >= 0.9 ? 'ok' : (tx >= 0.7 ? 'atencao' : 'falha'));
-    const quando = r.rodando ? 'em execução agora' : (r.ultima_execucao_em ? `última ${relativo(r.ultima_execucao_em)}` : 'nunca rodou');
-    // Cartão que vira (09-10-2026, pedido do responsável): a FRENTE fica só
-    // com a situação, o nome e o anel grande; o VERSO, com o que o robô faz.
-    const frente = html`<span class="robo-face robo-bloco" data-estado="${estado}">
-        <span class="robo-bloco-topo">
-            <span class="robo-etiqueta" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span>${etiqueta}</span>
-            <span class="robo-seguradora">${comSeguradora ? `${seguradorasDoRobo(r)} ` : ''}${r.resumo ? html`<i class="bi bi-arrow-repeat robo-dica-icone" title="Toque para ver o que faz" aria-hidden="true"></i>` : ''}</span>
+    const quando = quandoDoRobo(r, estado);
+    const semAnel = sobDemanda(r) && tx === null;
+    const frente = html`<span class="robo-face robo-bloco robo-compacto" data-estado="${estado}" data-modo="${r.modo}">
+        <span class="robo-compacto-texto">
+            <span class="robo-situacao" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span><span>${etiqueta} · ${quando}</span></span>
+            <span class="robo-bloco-nome">${nomeNoCartao(r, grupo)}</span>
         </span>
-        <span class="robo-bloco-nome">${r.nome}</span>
-        <span class="robo-bloco-pe">
-            <span class="robo-anel">${anel(tx, est)}<span class="robo-anel-valor">${tx === null ? '—' : percentual(tx)}</span></span>
-            <span class="robo-bloco-numeros"><strong>${textoTaxa(tx)}</strong><span>${quando}</span></span>
-        </span>
+        ${semAnel ? '' : html`<span class="robo-anel">${anel(tx, est)}<span class="robo-anel-valor">${tx === null ? '—' : percentual(tx)}</span></span>`}
+        ${r.resumo ? html`<i class="bi bi-arrow-repeat robo-dica-icone" title="Toque para ver o que faz" aria-hidden="true"></i>` : ''}
     </span>`;
-    const resultado = `${etiqueta}; ${tx === null ? textoTaxa(tx).toLowerCase() : `taxa de sucesso ${percentual(tx)}`}; ${quando}.`;
+    const resultado = `${etiqueta}, ${quando}${tx === null ? '' : `; ${percentual(tx)} deu certo no período`}.`;
     if (!r.resumo) {
         return html`<li><div class="robo-cartao" role="group" aria-label="${r.nome}: ${resultado}"><span class="robo-miolo">${frente}</span></div></li>`;
     }
@@ -432,10 +473,8 @@ function cartaoDoRobo({ r, ok, falhas, situacao: [estado, etiqueta] }, comSegura
         <span class="robo-miolo">
             ${frente}
             <span class="robo-face robo-verso robo-bloco" data-estado="${estado}" aria-hidden="${String(!virado)}">
-                <span class="robo-verso-rotulo">O que faz</span>
-                <span class="robo-bloco-nome">${r.nome}</span>
+                <span class="robo-verso-rotulo">O que faz <i class="bi bi-arrow-counterclockwise" title="Toque para voltar" aria-hidden="true"></i></span>
                 <span class="robo-verso-texto">${r.resumo}</span>
-                <span class="robo-dica"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> toque para voltar</span>
             </span>
         </span>
     </button></li>`;
@@ -451,8 +490,8 @@ function desenharFiltros(lista) {
     const ativos = Object.keys(PADROES).filter((k) => filtros[k] !== PADROES[k]);
     $('#limpar-filtros').hidden = !ativos.length;
     $('#recorte').textContent = lista.length === dados.robos.length
-        ? `Mostrando os ${dados.robos.length} robôs ativos`
-        : `Mostrando ${lista.length} de ${dados.robos.length} robôs ativos`;
+        ? `· ${plural(dados.robos.length, 'robô ativo', 'robôs ativos')}`
+        : `· ${lista.length} de ${plural(dados.robos.length, 'robô ativo', 'robôs ativos')}`;
 }
 
 function desenhar() {
@@ -466,7 +505,7 @@ function desenhar() {
         .sort((a, b) => b.robo.travado - a.robo.travado || (a.taxa ?? 1) - (b.taxa ?? 1));
     desenharFiltros(lista);
     desenharManchete(lista, totais, atencao);
-    desenharNumeros(lista, totais, atencao);
+    desenharNumeros(lista, totais);
     desenharRitmo(lista);
     desenharAtencao(atencao);
     desenharRobos(lista);
@@ -485,7 +524,9 @@ async function carregar() {
         return;
     }
     desenhar();
-    $('#dados-de').textContent = `dados de ${hora(dados.gerado_em)}`;
+    // Só a hora dos dados (13-10-2026: o rodapé repetia "dados de 09:06 ·
+    // Atualizado às 09:06").
+    $('#dados-de').textContent = `Dados de ${hora(dados.gerado_em)}`;
 }
 
 ['periodo', 'tipo', 'situacao'].forEach((chave) => ligarSegmentado(`[data-filtro="${chave}"]`, filtros, chave, aoMudarFiltro));
@@ -500,8 +541,7 @@ $('#lista-robos').addEventListener('click', (ev) => {
     const r = dados.robos.find((x) => x.id === id);
     el.setAttribute('aria-pressed', String(virado));
     el.querySelector('.robo-verso').setAttribute('aria-hidden', String(!virado));
-    if (r) el.setAttribute('aria-label', virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}. Toque para ver o que ele faz.`);
-});
+    if (r) el.setAttribute('aria-label', virado ? `${r.nome}: ${r.resumo} Toque para voltar.` : `${r.nome}. Toque para ver o que ele faz.`);});
 
 $('#filtro-seguradora').addEventListener('change', (ev) => { filtros.seguradora = ev.target.value; aoMudarFiltro(); });
 $('#limpar-filtros').addEventListener('click', () => {
@@ -512,7 +552,7 @@ $('#limpar-filtros').addEventListener('click', () => {
     aoMudarFiltro();
 });
 
-aCada(60_000, carregar, { rotulo: '#ultima-atualizacao' });
+aCada(60_000, carregar);
 
 // Trocou o tema (claro/escuro): o gráfico guarda as cores de quando foi
 // criado, então é refeito com as cores do tema novo.
