@@ -1139,8 +1139,9 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
    seção sem número (o capítulo 1 sumia quando vazio). */
 .painel-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-4) var(--e-6); margin-bottom: var(--e-4); padding: var(--e-5) var(--e-6); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-xl); box-shadow: var(--sombra-1); }
 .painel-resumo .manchete { flex: 999 1 520px; min-width: 0; }
-.painel-resumo .painel-numeros { flex: 1 1 360px; background: none; border: 0; border-left: 1px solid var(--borda); border-radius: 0; box-shadow: none; }
-.painel-resumo .kpi-nota { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.painel-resumo .painel-numeros { flex: 1 1 460px; min-width: 0; background: none; border: 0; border-left: 1px solid var(--borda); border-radius: 0; box-shadow: none; }
+.painel-resumo .kpi-rotulo { white-space: nowrap; }
+.painel-resumo .kpi-nota { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .painel-atencao { display: grid; gap: var(--e-2); margin-bottom: var(--e-4); padding: var(--e-4) var(--e-5); background: var(--falha-suave); border: 1px solid color-mix(in srgb, var(--falha) 45%, var(--borda)); border-radius: var(--raio-xl); }
 .painel-atencao[hidden] { display: none; }
 .painel-atencao h2 { margin: 0; color: var(--falha); font-size: var(--fs-base); }
@@ -1148,6 +1149,7 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
 .painel-vivo .painel-filtros { padding: 0; background: none; border: 0; border-radius: 0; }
 .painel-vivo .painel-filtros .rotulo-filtro { font-size: var(--fs-sm); font-weight: var(--peso-medio); text-transform: none; letter-spacing: 0; }
 .painel-vivo .painel-filtros #limpar-filtros { margin-left: auto; }
+.painel-vivo .painel-filtros #limpar-filtros[hidden] { display: none; }
 .painel-secao { margin-bottom: var(--e-5); }
 .painel-secao-topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--e-1) var(--e-5); margin-bottom: var(--e-3); }
 .painel-secao h2 { margin: 0; font-size: var(--fs-lg); }
@@ -1161,6 +1163,11 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
     .painel-resumo { padding: var(--e-4); }
     .painel-resumo .painel-numeros { border-left: 0; border-top: 1px solid var(--borda); }
     .painel-resumo .painel-numeros .kpi { padding: var(--e-3) var(--e-2) 0; }
+    /* Celular: os filtros numa faixa só, que rola de lado (eram ~300 px). */
+    .painel-vivo .painel-filtros { flex-wrap: nowrap; overflow-x: auto; padding-bottom: var(--e-2); }
+    .painel-vivo .painel-filtros > * { flex: none; }
+    .painel-vivo .painel-filtros .segmentado { flex-wrap: nowrap; }
+    .painel-vivo .painel-filtros .segmentado button { white-space: nowrap; }
 }
 
 /* Etiqueta do assunto + a pergunta da tela, no topo da manchete pública. */
@@ -1182,16 +1189,14 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
    grade nunca deixa buraco porque todos têm a mesma altura. Substituiu os
    cartões por seguradora (alturas diferentes) e a tabela (recusada). */
 .robos-blocos { display: grid; grid-template-columns: repeat(var(--colunas, 4), minmax(0, 1fr)); gap: var(--e-4); align-items: start; margin: 0; padding: 0; list-style: none; }
-/* Uma coluna por seguradora (13-10-2026, "ao invés de linhas, coloque por
-   colunas"): título no topo e os cartões empilhados, como no Kanban. Em tela
-   menor as colunas rolam de lado; no celular, uma embaixo da outra. */
-/* subgrid: os títulos das colunas dividem a mesma linha da grade, então um
-   título que quebra em duas linhas não desalinha os cartões das vizinhas. */
-/* 13-10-2026: a coluna perdeu o fundo — com fundo, todas esticavam até a
-   altura da maior (979 px) e a de 2 cartões ficava meio vazia. */
-.robos-coluna { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: var(--e-2); min-width: 0; }
-.robos-coluna-lista { display: flex; flex-direction: column; align-self: start; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
-.robos-coluna-lista > li { display: flex; }
+/* Uma LINHA por seguradora (13-10-2026, "ao invés de colunas, deixe em
+   linhas" — antes do mesmo dia: colunas, uma por seguradora): o nome da
+   seguradora à esquerda, os cartões lado a lado (4 por linha na TV de
+   1440 px); no celular, o nome em cima e os cartões um embaixo do outro. */
+.robos-linha { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: var(--e-3); min-width: 0; padding: var(--e-2) 0; border-top: 1px solid var(--borda); }
+.robos-linha:first-child { border-top: 0; }
+.robos-linha-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
+.robos-linha-lista > li { display: flex; min-width: 0; }
 .robos-grupo { display: flex; align-items: center; align-content: start; gap: var(--e-1) var(--e-2); min-width: 0; padding: var(--e-1) var(--e-2); color: var(--texto-3); }
 .robos-grupo h3 { flex: 1 1 0; min-width: 0; margin: 0; color: var(--texto); font-size: var(--fs-base); line-height: 1.35; }
 .robos-grupo-contagem, .robos-grupo-atencao { white-space: nowrap; }
@@ -1274,30 +1279,36 @@ body:has(.kanban-quadro) .kanban-quadro { flex: 1; margin-bottom: 0; }
 .robo-anel-valor { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--fs-base); font-weight: var(--peso-titulo); font-variant-numeric: tabular-nums; }
 .robo-bloco-numeros { display: grid; gap: 2px; min-width: 0; font-size: var(--fs-sm); color: var(--texto-3); }
 .robo-bloco-numeros strong { color: var(--texto); font-size: var(--fs-lg); font-weight: var(--peso-forte); line-height: 1.3; }
-/* Cartão compacto (13-10-2026): situação + quando numa linha, o nome embaixo
-   e um anel pequeno à direita. De 214 para ~72 px: os 17 robôs cabem na
-   primeira tela da TV (1440x900). */
-.robos-coluna .robo-bloco.robo-compacto { display: flex; align-items: center; gap: var(--e-3); padding: var(--e-3) var(--e-4); }
+/* Cartão compacto (13-10-2026): situação + quando numa linha, o nome
+   embaixo e um anel pequeno à direita (~60 px de altura). */
+.robos-linha .robo-bloco.robo-compacto { display: flex; align-items: center; gap: var(--e-2); padding: var(--e-2) var(--e-3); }
 .robo-compacto-texto { display: grid; gap: 2px; flex: 1 1 auto; min-width: 0; }
-.robo-situacao { display: flex; align-items: center; gap: var(--e-2); min-width: 0; color: var(--texto-3); font-size: var(--fs-xs); font-weight: var(--peso-medio); }
+.robo-compacto .robo-bloco-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.robo-situacao { display: flex; align-items: center; gap: var(--e-2); min-width: 0; color: var(--texto-3); font-size: var(--fs-xs); font-weight: var(--peso-medio); line-height: 1.25; }
 .robo-situacao > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .robo-situacao[data-estado="ok"] { color: var(--ok); }
 .robo-situacao[data-estado="falha"] { color: var(--falha); }
 .robo-situacao[data-estado="atencao"] { color: var(--atencao); }
 .robo-situacao[data-estado="rodando"] { color: var(--primaria-texto); }
-.robo-compacto .robo-bloco-nome { font-size: var(--fs-base); line-height: 1.3; }
-.robo-compacto .robo-bloco-nome small { color: var(--texto-3); font-size: inherit; font-weight: var(--peso-medio); }
-.robo-compacto .robo-dica-icone { margin-left: auto; flex: none; }
-.robo-compacto .robo-anel, .robo-compacto .anel { width: 44px; height: 44px; }
+.robo-compacto .robo-bloco-nome { font-size: var(--fs-sm); line-height: 1.3; }
+.robo-compacto .robo-dica-icone { flex: none; }
+.robo-compacto .robo-anel, .robo-compacto .anel { width: 36px; height: 36px; }
 .robo-compacto .robo-anel-valor { font-size: var(--fs-2xs); }
 /* Robô sob demanda: não rodar hoje é o normal dele — borda tracejada, sem anel. */
 .robo-bloco[data-modo="sob_demanda"] { border-style: dashed; border-color: var(--borda-forte); background: transparent; }
 .robo-bloco[data-modo="sob_demanda"] .robo-bloco-nome { color: var(--texto-2); }
-.robos-coluna .robo-verso { padding: var(--e-3) var(--e-4); gap: var(--e-1); }
-.robos-coluna .robo-verso .robo-bloco-nome { font-size: var(--fs-sm); }
-.robos-coluna .robo-verso-texto { font-size: var(--fs-sm); line-height: 1.4; }
-@media (max-width: 1100px) { .robos-blocos { grid-template-columns: repeat(var(--colunas, 4), minmax(250px, 1fr)); overflow-x: auto; padding-bottom: var(--e-2); scroll-snap-type: x mandatory; } .robos-coluna { scroll-snap-align: start; } }
-@media (max-width: 560px) { .robos-blocos { grid-template-columns: 1fr; overflow-x: visible; } }
+/* O verso ocupa a altura da frente (e rola se o texto passar): o "o que
+   faz" era mais alto e esticava os cartões. */
+.robos-linha .robo-miolo { position: relative; }
+.robos-linha .robo-verso { position: absolute; inset: 0; align-content: start; padding: var(--e-2) var(--e-3); gap: 2px; overflow-y: auto; }
+.robos-linha .robo-verso-texto { font-size: var(--fs-xs); line-height: 1.35; }
+.painel-vivo .robos-blocos { grid-template-columns: 1fr; gap: 0; }
+.painel-vivo .robos-grupo { flex-wrap: wrap; padding: 0; }
+.painel-vivo .robos-grupo h3 { flex: 1 1 100%; }
+@media (max-width: 640px) {
+    .robos-linha { grid-template-columns: 1fr; gap: var(--e-2); padding: var(--e-3) 0; }
+    .painel-vivo .robos-grupo h3 { flex: 0 1 auto; }
+}
 /* Celular: uma coluna, bloco um pouco mais enxuto. */
 @media (max-width: 560px) {
     .robo-bloco { padding: var(--e-4); }

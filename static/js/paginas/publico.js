@@ -142,12 +142,17 @@ function kpi(id, valor, nota, estado) {
 function tendencia(delta, { pontos = false, bomQuandoSobe = true } = {}) {
     if (delta === null || delta === undefined || Number.isNaN(delta)) return html`<span class="fraco">sem base para comparar</span>`;
     const valor = Math.round(delta * 100);
-    if (valor === 0) return html`<span class="tendencia" data-direcao="igual"><i class="bi bi-dash"></i>igual ao período anterior</span>`;
+    if (valor === 0) return html`<span class="tendencia" data-direcao="igual"><i class="bi bi-dash"></i>igual a ${REFERENCIA_CURTA[filtros.periodo]}</span>`;
     const sobe = valor > 0;
     // bomQuandoSobe = null: só informa (mais ou menos execuções não é bom nem ruim).
     const bom = bomQuandoSobe === null ? 'neutro' : String(sobe === bomQuandoSobe);
-    return html`<span class="tendencia" data-direcao="${sobe ? 'sobe' : 'desce'}" data-bom="${bom}"><i class="bi bi-arrow-${sobe ? 'up' : 'down'}-right"></i>${pontos ? plural(Math.abs(valor), 'ponto', 'pontos') : `${Math.abs(valor)}%`} ${sobe ? 'acima' : 'abaixo'} ${textoVs()}</span>`;
+    // Nota curta (13-10-2026: os números dividem a linha com a manchete); a
+    // frase inteira fica no title.
+    const quanto = pontos ? plural(Math.abs(valor), 'ponto', 'pontos') : `${Math.abs(valor)}%`;
+    return html`<span class="tendencia" data-direcao="${sobe ? 'sobe' : 'desce'}" data-bom="${bom}" title="${quanto} ${sobe ? 'acima' : 'abaixo'} ${textoVs()}"><i class="bi bi-arrow-${sobe ? 'up' : 'down'}-right"></i>${sobe ? '+' : '−'}${quanto} vs ${REFERENCIA_CURTA[filtros.periodo]}</span>`;
 }
+
+const REFERENCIA_CURTA = { hoje: 'ontem', 7: '7 dias antes', 30: '30 dias antes' };
 
 // Manchete (09-10-2026): começa pela RESPOSTA — quantos pedem atenção e
 // quantos estão em dia —, só com as cores de estado (vermelho/verde). O
@@ -357,14 +362,14 @@ function situacaoDoRobo(r, execucoes) {
     if (!execucoes) {
         if (sobDemanda(r)) return ['neutro', 'Sob demanda'];
         if (filtros.periodo !== 'hoje') return ['neutro', 'Não rodou no período'];
-        return ['neutro', r.roda_hoje ? 'Ainda não rodou hoje' : 'Não rodou hoje'];
+        return ['neutro', r.roda_hoje ? 'Ainda não rodou' : 'Não rodou hoje'];
     }
     return ['ok', 'Deu certo'];
 }
 
 /** Segunda metade da linha de situação: quando rodou (ou quando vai rodar). */
 function quandoDoRobo(r, estado) {
-    if (r.rodando) return 'em execução';
+    if (r.rodando) return '';
     if (estado === 'neutro' && !sobDemanda(r) && r.proxima_hoje && filtros.periodo === 'hoje') return `próxima às ${r.proxima_hoje}`;
     if (!r.ultima_execucao_em) return 'nunca rodou';
     return `${sobDemanda(r) ? 'última ' : ''}${relativo(r.ultima_execucao_em)}`;
@@ -372,11 +377,14 @@ function quandoDoRobo(r, estado) {
 
 /** Nome sem a seguradora que já está no título da coluna
  *  ("Apólices e comissão Akad" -> "Apólices e comissão"). */
+const escaparRegex = (texto) => texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function nomeSemSeguradora(r) {
     let nome = r.nome;
-    r.seguradoras.forEach((s) => {
-        const sem = nome.replace(new RegExp(`\\s*[-–·]?\\s*${s.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '');
-        if (sem.trim()) nome = sem.trim();
+    // O cadastro diz "Porto Seguros" e o nome do robô, só "Porto".
+    const formas = r.seguradoras.flatMap((s) => [s.trim(), nomeSeguradora(s), s.trim().split(/\s+/)[0]]);
+    [...new Set(formas)].forEach((s) => {
+        const sem = nome.replace(new RegExp(`\\s*[-–·]?\\s*${escaparRegex(s)}\\s*$`, 'i'), '').trim();
+        if (sem) nome = sem;
     });
     return nome;
 }
@@ -394,13 +402,9 @@ function anel(taxa, estado) {
 // Grupos do Robô por robô (13-10-2026, pedido do responsável: "quero que
 // seja agrupado por seguradora"): um título por seguradora, com a contagem e
 // quantos pedem atenção, em ordem alfabética e Sistemas nossos no fim. Dentro
-// do grupo, quem pede atenção primeiro (ordemDosRobos). Seguradoras com um
-// robô só dividem um grupo ("Fator, Mapfre, Porto e Tokio"), logo antes de
-// Sistemas nossos, para não sobrar uma linha quase vazia para cada uma; nesse
-// grupo o cartão volta a mostrar a seguradora.
+// do grupo, quem pede atenção primeiro (ordemDosRobos).
 function desenharRobos(lista) {
     if (!lista.length) {
-        $('#lista-robos').style.setProperty('--colunas', 1);
         montar('#lista-robos', vazio('funnel', 'Nenhum robô neste recorte.', 'Troque os filtros acima.'));
         return;
     }
@@ -411,40 +415,26 @@ function desenharRobos(lista) {
         if (!grupos.has(nome)) grupos.set(nome, { nome, sistema: r.sistema_nosso, itens: [] });
         grupos.get(nome).itens.push({ r, ok, falhas, situacao: situacaoDoRobo(r, ok + falhas) });
     });
-    let ordem = [...grupos.values()].sort((a, b) => (a.sistema - b.sistema) || a.nome.localeCompare(b.nome, 'pt-BR'));
-    const sozinhas = ordem.filter((g) => !g.sistema && g.itens.length === 1);
-    if (sozinhas.length > 1) {
-        const nomes = sozinhas.map((g) => g.nome);
-        const itens = sozinhas.map((g) => g.itens[0]);
-        const juntas = {
-            nome: `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}`,
-            sistema: false,
-            comSeguradora: true,
-            itens: ordemDosRobos(itens.map((i) => i.r)).map((r) => itens.find((i) => i.r === r)),
-        };
-        ordem = [...ordem.filter((g) => !sozinhas.includes(g) && !g.sistema), juntas, ...ordem.filter((g) => g.sistema)];
-    }
-    // Uma COLUNA por grupo (13-10-2026, pedido do responsável: "ao invés de
-    // linhas, coloque por colunas"), com os cartões empilhados.
+    // Uma LINHA por seguradora, mesmo as que têm um robô só (13-10-2026,
+    // pedidos do responsável: "divida os robôs por seguradora" e depois "ao
+    // invés de colunas, deixe em linhas"): o nome à esquerda e os cartões lado
+    // a lado.
+    const ordem = [...grupos.values()].sort((a, b) => (a.sistema - b.sistema) || a.nome.localeCompare(b.nome, 'pt-BR'));
     const el = $('#lista-robos');
-    el.style.setProperty('--colunas', ordem.length);
     montar(el, ordem.map((g) => {
         const atencao = g.itens.filter((i) => ['falha', 'atencao'].includes(i.situacao[0])).length;
-        return html`<li class="robos-coluna">
-            <div class="robos-grupo"><i class="bi bi-${g.sistema ? 'gear' : 'building'}" aria-hidden="true"></i><h3>${g.nome}</h3><span class="robos-grupo-contagem">${plural(g.itens.length, 'robô', 'robôs')}</span>${atencao
+        return html`<li class="robos-linha">
+            <div class="robos-grupo"><h3>${g.nome}</h3><span class="robos-grupo-contagem">${plural(g.itens.length, 'robô', 'robôs')}</span>${atencao
                 ? html`<span class="robos-grupo-atencao">${atencao} ${atencao === 1 ? 'pede' : 'pedem'} atenção</span>` : ''}</div>
-            <ul class="robos-coluna-lista">${g.itens.map((i) => cartaoDoRobo(i, g))}</ul>
+            <ul class="robos-linha-lista">${g.itens.map((i) => cartaoDoRobo(i, g))}</ul>
         </li>`;
     }));
 }
 
-/** Nome no cartão: na coluna de uma seguradora, sem ela; na coluna que junta
- *  várias, a seguradora na frente; em Sistemas nossos, o nome inteiro. */
+/** Nome no cartão: na linha de uma seguradora, sem ela (já está no título);
+ *  em Sistemas nossos, o nome inteiro. */
 function nomeNoCartao(r, grupo) {
-    if (grupo.sistema) return r.nome;
-    const curto = nomeSemSeguradora(r);
-    if (!grupo.comSeguradora) return curto;
-    return html`${seguradorasDoRobo(r)} <small>· ${curto}</small>`;
+    return grupo.sistema ? r.nome : nomeSemSeguradora(r);
 }
 
 // Cartão compacto (13-10-2026): a situação e quando numa linha, o nome
@@ -457,13 +447,13 @@ function cartaoDoRobo({ r, ok, falhas, situacao: [estado, etiqueta] }, grupo) {
     const semAnel = sobDemanda(r) && tx === null;
     const frente = html`<span class="robo-face robo-bloco robo-compacto" data-estado="${estado}" data-modo="${r.modo}">
         <span class="robo-compacto-texto">
-            <span class="robo-situacao" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span><span>${etiqueta} · ${quando}</span></span>
+            <span class="robo-situacao" data-estado="${estado}"><span class="ponto" data-estado="${estado}" aria-hidden="true"></span><span>${quando ? `${etiqueta} · ${quando}` : etiqueta}</span></span>
             <span class="robo-bloco-nome">${nomeNoCartao(r, grupo)}</span>
         </span>
         ${semAnel ? '' : html`<span class="robo-anel">${anel(tx, est)}<span class="robo-anel-valor">${tx === null ? '—' : percentual(tx)}</span></span>`}
         ${r.resumo ? html`<i class="bi bi-arrow-repeat robo-dica-icone" title="Toque para ver o que faz" aria-hidden="true"></i>` : ''}
     </span>`;
-    const resultado = `${etiqueta}, ${quando}${tx === null ? '' : `; ${percentual(tx)} deu certo no período`}.`;
+    const resultado = `${etiqueta}${quando ? `, ${quando}` : ''}${tx === null ? '' : `; ${percentual(tx)} deu certo no período`}.`;
     if (!r.resumo) {
         return html`<li><div class="robo-cartao" role="group" aria-label="${r.nome}: ${resultado}"><span class="robo-miolo">${frente}</span></div></li>`;
     }
