@@ -263,10 +263,16 @@ export function avisar({ titulo, texto = '', estado = 'info', rotulo = 'Entendi'
  * formulario({ titulo, texto, campos, rotuloConfirmar, enviar })
  * campos: [{ nome, rotulo, tipo: 'texto'|'area'|'numero'|'data'|'datahora'|'selecao'|'caixa'|'senha'|'email',
  *            valor, opcoes: [{valor, rotulo}], obrigatorio, ajuda, placeholder }]
+ * Agrupadores: { tipo: 'secao', rotulo, ajuda }, { tipo: 'linha', campos },
+ * { tipo: 'tabela', colunas, linhas } e { tipo: 'recolhivel', rotulo, ajuda,
+ * campos } (parte fechada por padrão, para o que se usa pouco). Numa tabela,
+ * a caixa pode levar `legenda` (texto ao lado do interruptor).
+ * `contarAlteracoes`: o rodapé mostra quantos campos mudaram e o campo
+ * alterado ganha destaque (data-alterado).
  * `enviar(valores)` (opcional): async; se levantar erro, a mensagem aparece
  * no diálogo e ele continua aberto. Resolve com os valores, ou null se cancelado.
  */
-export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-square', campos = [], rotuloConfirmar = 'Salvar', enviar = null, tamanho = null }) {
+export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-square', campos = [], rotuloConfirmar = 'Salvar', enviar = null, tamanho = null, contarAlteracoes = false }) {
     return new Promise((resolver) => {
         const prefixo = `f-${Math.random().toString(36).slice(2)}`;
         // Só o controle (sem rótulo visível): usado nas células de `tabela`;
@@ -274,13 +280,13 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
         const controleHtml = (c) => {
             const id = `${prefixo}-${c.nome}`;
             if (c.tipo === 'caixa') {
-                return html`<label class="interruptor" for="${id}"><input type="checkbox" id="${id}" name="${c.nome}" aria-label="${c.rotulo}" ${c.valor ? 'checked' : ''}><span class="trilho"></span></label>`;
+                return html`<label class="interruptor" for="${id}"><input type="checkbox" id="${id}" name="${c.nome}" aria-label="${c.rotulo}" ${c.valor ? 'checked' : ''}><span class="trilho"></span>${c.legenda ? html`<span>${c.legenda}</span>` : ''}</label>`;
             }
             if (c.tipo === 'selecao') {
                 return html`<select class="selecao" id="${id}" name="${c.nome}" aria-label="${c.rotulo}">${(c.opcoes || []).map((o) => html`<option value="${o.valor}" ${String(o.valor) === String(c.valor ?? '') ? 'selected' : ''}>${o.rotulo}</option>`)}</select>`;
             }
             const tipo = c.tipo === 'numero' ? 'number' : 'text';
-            return html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" aria-label="${c.rotulo}" value="${c.valor ?? ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${c.somenteLeitura ? 'readonly' : ''} autocomplete="off">`;
+            return html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" aria-label="${c.rotulo}" value="${c.valor ?? ''}" placeholder="${c.placeholder || ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${c.somenteLeitura ? 'readonly' : ''} autocomplete="off">`;
         };
         // Célula de `tabela`: campo, {texto} ou null ("não se aplica").
         const celulaHtml = (c) => {
@@ -295,6 +301,11 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
             // Título que separa partes do formulário.
             if (c.tipo === 'secao') {
                 return html`<div class="secao-form"><h3>${c.rotulo}</h3>${ajuda}</div>`;
+            }
+            // Parte fechada por padrão (opções raras), com os próprios campos.
+            if (c.tipo === 'recolhivel') {
+                return html`<details class="recolhivel-form"><summary>${c.rotulo}${c.ajuda ? html` <span class="fraco">— ${c.ajuda}</span>` : ''}</summary>
+                    <div class="pilha">${c.campos.map(campoHtml)}</div></details>`;
             }
             // Vários campos numa linha só (ex.: seguradora, parcelas...).
             if (c.tipo === 'linha') {
@@ -325,16 +336,18 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
             titulo, icone, tamanho,
             corpo: html`<div class="pilha">${texto ? html`<p class="sem-margem">${texto}</p>` : ''}${extra || ''}${campos.map(campoHtml)}
                 <div class="aviso oculto" data-estado="falha" role="alert" data-erro><i class="bi bi-exclamation-octagon"></i><div data-erro-texto></div></div></div>`,
-            rodape: html`<button type="button" class="btn btn-fantasma" data-fechar>Cancelar</button>
+            rodape: html`${contarAlteracoes ? html`<span class="contador-alteracoes" data-contador aria-live="polite">Nenhuma alteração</span>` : ''}
+                <button type="button" class="btn btn-fantasma" data-fechar>Cancelar</button>
                 <button type="submit" class="btn btn-primaria" data-confirmar>${rotuloConfirmar}</button>`,
         });
         const form = dialogo.querySelector('form');
-        const todos = campos.flatMap((c) => {
-            if (c.tipo === 'linha') return c.campos;
+        const achatar = (lista) => lista.flatMap((c) => {
+            if (c.tipo === 'linha' || c.tipo === 'recolhivel') return achatar(c.campos);
             if (c.tipo === 'tabela') return c.linhas.flat().filter((x) => x && x.nome);
             if (c.tipo === 'secao') return [];
             return [c];
         });
+        const todos = achatar(campos);
         // CSS.escape: nomes de campo podem ter espaço (siglas "BIO E" da Estética Akad);
         // sem escapar, o seletor quebra e o Salvar não faz nada.
         const campo = (nome) => form.querySelector(`#${CSS.escape(`${prefixo}-${nome}`)}`);
@@ -344,6 +357,24 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
             if (c.tipo === 'numero') return [c.nome, el.value === '' ? null : Number(el.value)];
             return [c.nome, el.value.trim()];
         }));
+        if (contarAlteracoes) {
+            const iniciais = lerValores();
+            const contador = dialogo.querySelector('[data-contador]');
+            const recontar = () => {
+                const agora = lerValores();
+                let n = 0;
+                todos.forEach((c) => {
+                    const mudou = agora[c.nome] !== iniciais[c.nome];
+                    if (mudou) n += 1;
+                    const el = campo(c.nome);
+                    (c.tipo === 'caixa' ? el.closest('.interruptor') : el).toggleAttribute('data-alterado', mudou);
+                });
+                contador.textContent = n === 0 ? 'Nenhuma alteração' : n === 1 ? '1 alteração' : `${n} alterações`;
+                contador.toggleAttribute('data-alterado', n > 0);
+            };
+            form.addEventListener('input', recontar);
+            form.addEventListener('change', recontar);
+        }
         let resultado = null;
         form.addEventListener('submit', async (ev) => {
             ev.preventDefault();
@@ -352,6 +383,8 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
             if (faltando) {
                 caixaErro.classList.remove('oculto');
                 caixaErro.querySelector('[data-erro-texto]').textContent = `Preencha "${faltando.rotulo}".`;
+                const recolhido = campo(faltando.nome).closest('details');
+                if (recolhido) recolhido.open = true;
                 campo(faltando.nome).focus();
                 return;
             }

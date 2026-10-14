@@ -372,6 +372,14 @@ a.cartao:hover { text-decoration: none; border-color: var(--borda-forte); box-sh
 .tabela-form .entrada, .tabela-form .selecao { min-width: 84px; }
 .tabela-form td.nao-se-aplica { color: var(--texto-3); text-align: center; }
 .tabela-form th { white-space: nowrap; }
+.recolhivel-form { border: 1px solid var(--borda); border-radius: var(--raio-md); padding: var(--e-3) var(--e-4); }
+.recolhivel-form > summary { cursor: pointer; font-weight: var(--peso-forte); min-height: 28px; display: list-item; }
+.recolhivel-form[open] > summary { margin-bottom: var(--e-3); }
+/* Campo mudado no formulário (contarAlteracoes): borda de atenção, nunca só cor — o rodapé conta. */
+.dialogo .entrada[data-alterado], .dialogo .selecao[data-alterado] { border-color: var(--atencao); box-shadow: 0 0 0 1px var(--atencao); }
+.dialogo .interruptor[data-alterado] .trilho { outline: 2px solid var(--atencao); outline-offset: 2px; }
+.contador-alteracoes { margin-right: auto; font-size: var(--fs-sm); color: var(--texto-3); align-self: center; }
+.contador-alteracoes[data-alterado] { color: var(--texto); font-weight: var(--peso-forte); }
 .campos-em-linha .campo label { font-weight: var(--peso-normal, 400); color: var(--texto-3); }
 .campo input[readonly] { background: var(--superficie-2); color: var(--texto-3); }
 
