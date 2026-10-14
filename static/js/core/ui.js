@@ -269,13 +269,43 @@ export function avisar({ titulo, texto = '', estado = 'info', rotulo = 'Entendi'
 export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-square', campos = [], rotuloConfirmar = 'Salvar', enviar = null, tamanho = null }) {
     return new Promise((resolver) => {
         const prefixo = `f-${Math.random().toString(36).slice(2)}`;
+        // Só o controle (sem rótulo visível): usado nas células de `tabela`;
+        // o rótulo vai em aria-label para leitor de tela.
+        const controleHtml = (c) => {
+            const id = `${prefixo}-${c.nome}`;
+            if (c.tipo === 'caixa') {
+                return html`<label class="interruptor" for="${id}"><input type="checkbox" id="${id}" name="${c.nome}" aria-label="${c.rotulo}" ${c.valor ? 'checked' : ''}><span class="trilho"></span></label>`;
+            }
+            if (c.tipo === 'selecao') {
+                return html`<select class="selecao" id="${id}" name="${c.nome}" aria-label="${c.rotulo}">${(c.opcoes || []).map((o) => html`<option value="${o.valor}" ${String(o.valor) === String(c.valor ?? '') ? 'selected' : ''}>${o.rotulo}</option>`)}</select>`;
+            }
+            const tipo = c.tipo === 'numero' ? 'number' : 'text';
+            return html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" aria-label="${c.rotulo}" value="${c.valor ?? ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${c.somenteLeitura ? 'readonly' : ''} autocomplete="off">`;
+        };
+        // Célula de `tabela`: campo, {texto} ou null ("não se aplica").
+        const celulaHtml = (c) => {
+            if (!c) return html`<td class="nao-se-aplica" title="Não se aplica">—</td>`;
+            if (c.texto !== undefined) return html`<td>${c.texto}</td>`;
+            return html`<td>${controleHtml(c)}</td>`;
+        };
         const campoHtml = (c) => {
             const id = `${prefixo}-${c.nome}`;
             const req = c.obrigatorio ? 'required' : '';
             const ajuda = c.ajuda ? html`<span class="ajuda">${c.ajuda}</span>` : '';
-            // Vários campos numa linha só (ex.: as 3 negativas da planilha).
+            // Título que separa partes do formulário.
+            if (c.tipo === 'secao') {
+                return html`<div class="secao-form"><h3>${c.rotulo}</h3>${ajuda}</div>`;
+            }
+            // Vários campos numa linha só (ex.: seguradora, parcelas...).
             if (c.tipo === 'linha') {
-                return html`<div class="campo"><span class="rotulo">${c.rotulo}</span><div class="campos-em-linha">${c.campos.map(campoHtml)}</div>${ajuda}</div>`;
+                return html`<div class="campo">${c.rotulo ? html`<span class="rotulo">${c.rotulo}</span>` : ''}<div class="campos-em-linha">${c.campos.map(campoHtml)}</div>${ajuda}</div>`;
+            }
+            // Tabela de campos: cabeçalho uma vez, uma linha por item.
+            if (c.tipo === 'tabela') {
+                return html`<div class="campo"><div class="tabela-envoltorio"><table class="tabela tabela-form">
+                    <thead><tr>${c.colunas.map((t) => html`<th>${t}</th>`)}</tr></thead>
+                    <tbody>${c.linhas.map((l) => html`<tr>${l.map(celulaHtml)}</tr>`)}</tbody>
+                </table></div>${ajuda}</div>`;
             }
             if (c.tipo === 'caixa') {
                 return html`<label class="interruptor" for="${id}"><input type="checkbox" id="${id}" name="${c.nome}" ${c.valor ? 'checked' : ''}><span class="trilho"></span>${c.rotulo}</label>${ajuda}`;
@@ -299,7 +329,12 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
                 <button type="submit" class="btn btn-primaria" data-confirmar>${rotuloConfirmar}</button>`,
         });
         const form = dialogo.querySelector('form');
-        const todos = campos.flatMap((c) => (c.tipo === 'linha' ? c.campos : [c]));
+        const todos = campos.flatMap((c) => {
+            if (c.tipo === 'linha') return c.campos;
+            if (c.tipo === 'tabela') return c.linhas.flat().filter((x) => x && x.nome);
+            if (c.tipo === 'secao') return [];
+            return [c];
+        });
         const lerValores = () => Object.fromEntries(todos.map((c) => {
             const el = form.querySelector(`#${prefixo}-${c.nome}`);
             if (c.tipo === 'caixa') return [c.nome, el.checked];
