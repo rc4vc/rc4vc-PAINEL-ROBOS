@@ -335,8 +335,11 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
             if (c.tipo === 'secao') return [];
             return [c];
         });
+        // CSS.escape: nomes de campo podem ter espaço (siglas "BIO E" da Estética Akad);
+        // sem escapar, o seletor quebra e o Salvar não faz nada.
+        const campo = (nome) => form.querySelector(`#${CSS.escape(`${prefixo}-${nome}`)}`);
         const lerValores = () => Object.fromEntries(todos.map((c) => {
-            const el = form.querySelector(`#${prefixo}-${c.nome}`);
+            const el = campo(c.nome);
             if (c.tipo === 'caixa') return [c.nome, el.checked];
             if (c.tipo === 'numero') return [c.nome, el.value === '' ? null : Number(el.value)];
             return [c.nome, el.value.trim()];
@@ -344,12 +347,12 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
         let resultado = null;
         form.addEventListener('submit', async (ev) => {
             ev.preventDefault();
-            const faltando = todos.find((c) => c.obrigatorio && c.tipo !== 'caixa' && !form.querySelector(`#${prefixo}-${c.nome}`).value.trim());
+            const faltando = todos.find((c) => c.obrigatorio && c.tipo !== 'caixa' && !campo(c.nome).value.trim());
             const caixaErro = form.querySelector('[data-erro]');
             if (faltando) {
                 caixaErro.classList.remove('oculto');
                 caixaErro.querySelector('[data-erro-texto]').textContent = `Preencha "${faltando.rotulo}".`;
-                form.querySelector(`#${prefixo}-${faltando.nome}`).focus();
+                campo(faltando.nome).focus();
                 return;
             }
             const valores = lerValores();
