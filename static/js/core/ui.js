@@ -286,7 +286,7 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
                 return html`<select class="selecao" id="${id}" name="${c.nome}" aria-label="${c.rotulo}">${(c.opcoes || []).map((o) => html`<option value="${o.valor}" ${String(o.valor) === String(c.valor ?? '') ? 'selected' : ''}>${o.rotulo}</option>`)}</select>`;
             }
             const tipo = c.tipo === 'numero' ? 'number' : 'text';
-            return html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" aria-label="${c.rotulo}" value="${c.valor ?? ''}" placeholder="${c.placeholder || ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${c.somenteLeitura ? 'readonly' : ''} autocomplete="off">`;
+            return html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" aria-label="${c.rotulo}" value="${c.valor ?? ''}" placeholder="${c.placeholder || ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${c.passo === 'any' ? seguro('step="any"') : ''} ${c.somenteLeitura ? 'readonly' : ''} autocomplete="off">`;
         };
         // Célula de `tabela`: campo, {texto} ou null ("não se aplica").
         const celulaHtml = (c) => {
@@ -328,7 +328,7 @@ export function formulario({ titulo, texto = '', extra = null, icone = 'pencil-s
                 controle = html`<select class="selecao" id="${id}" name="${c.nome}" ${req}>${(c.opcoes || []).map((o) => html`<option value="${o.valor}" ${String(o.valor) === String(c.valor ?? '') ? 'selected' : ''}>${o.rotulo}</option>`)}</select>`;
             } else {
                 const tipo = { numero: 'number', data: 'date', datahora: 'datetime-local', senha: 'password', email: 'email' }[c.tipo] || 'text';
-                controle = html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" value="${c.valor ?? ''}" placeholder="${c.placeholder || ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${c.somenteLeitura ? 'readonly' : ''} ${req} autocomplete="off">`;
+                controle = html`<input class="entrada" type="${tipo}" id="${id}" name="${c.nome}" value="${c.valor ?? ''}" placeholder="${c.placeholder || ''}" ${c.min !== undefined ? seguro(`min="${Number(c.min)}"`) : ''} ${c.passo === 'any' ? seguro('step="any"') : ''} ${c.somenteLeitura ? 'readonly' : ''} ${req} autocomplete="off">`;
             }
             return html`<div class="campo"><label for="${id}">${c.rotulo}${c.obrigatorio ? html` <span class="fraco">*</span>` : ''}</label>${controle}${ajuda}</div>`;
         };
