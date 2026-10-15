@@ -114,18 +114,6 @@
 
     /* Texto sobre o laranja da marca: escuro nos dois temas (branco dava 2,7:1). */
     --sobre-acento: #11151c;
-
-    /* Farol de cotações (15-10-2026): as cores da legenda da planilha
-       (aba Planilha2), iguais nos dois temas — é o código que a equipe já lê.
-       Texto só vai sobre o verde (a data): --farol-texto dá 7:1 nele. */
-    --farol-producao: #c2f1c8;
-    --farol-pendente-faq: #fbe3d6;
-    --farol-pendente-comparativo: #f2cfee;
-    --farol-nao-cotado: #ff0000;
-    --farol-ponto: #9aa1ad;
-    --farol-texto: #12501b;
-    --farol-area: #caeefb;
-    --farol-area-texto: #0b3a4a;
 }
 
 /* ==========================================================================
