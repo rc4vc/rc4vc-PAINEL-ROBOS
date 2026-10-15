@@ -1169,6 +1169,24 @@ body:has(.painel-vivo) .simples-topo { padding-top: var(--e-3); padding-bottom: 
 .painel-vivo .painel-filtros .rotulo-filtro { font-size: var(--fs-sm); font-weight: var(--peso-medio); text-transform: none; letter-spacing: 0; }
 .painel-vivo .painel-filtros #limpar-filtros { margin-left: auto; }
 .painel-vivo .painel-filtros #limpar-filtros[hidden] { display: none; }
+/* "Escolher dias" (15-10-2026): um calendário por mês, lado a lado; no
+   celular a faixa rola de lado e abre no mês corrente. Dia marcado = fundo
+   da cor primária; hoje = contorno; fim de semana = número mais apagado. */
+.painel-dias { margin: calc(-1 * var(--e-2)) 0 var(--e-4); padding: var(--e-3) var(--e-4); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-lg); }
+.painel-dias[hidden] { display: none; }
+.painel-dias-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-3); margin: 0 0 var(--e-2); color: var(--texto-2); font-size: var(--fs-sm); font-weight: var(--peso-medio); }
+.painel-dias-meses { display: flex; gap: var(--e-6); overflow-x: auto; padding-bottom: var(--e-1); }
+.dias-mes { flex: none; width: 236px; }
+.dias-mes-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-2); margin-bottom: var(--e-1); }
+.dias-mes-topo strong { font-size: var(--fs-sm); text-transform: capitalize; }
+.dias-mes-topo .btn[aria-pressed="true"] { background: var(--primaria-suave); border-color: var(--primaria); color: var(--primaria-texto); }
+.dias-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dias-semana { text-align: center; color: var(--texto-3); font-size: var(--fs-2xs); font-weight: var(--peso-forte); }
+.dias-cal .dia { height: 30px; padding: 0; border: 1px solid transparent; border-radius: var(--raio-sm); background: none; color: var(--texto); font: inherit; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; cursor: pointer; }
+.dias-cal .dia:hover { background: var(--superficie-2); }
+.dias-cal .dia[data-fds] { color: var(--texto-3); }
+.dias-cal .dia[data-hoje] { border-color: var(--borda-forte); font-weight: var(--peso-forte); }
+.dias-cal .dia[aria-pressed="true"] { background: var(--primaria); border-color: var(--primaria); color: var(--sobre-primaria); }
 .painel-secao { margin-bottom: var(--e-5); }
 .painel-secao-topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--e-1) var(--e-5); margin-bottom: var(--e-3); }
 .painel-secao h2 { margin: 0; font-size: var(--fs-lg); }

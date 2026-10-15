@@ -10,7 +10,7 @@ import { barrasSucessoFalha } from '../core/graficos.js';
 import { lerFiltros, gravarFiltros, ligarSegmentado } from '../core/filtros.js';
 
 const SISTEMAS = '__sistemas';
-const PADROES = { periodo: 'hoje', seguradora: '', tipo: '', situacao: '' };
+const PADROES = { periodo: 'hoje', seguradora: '', tipo: '', situacao: '', datas: '' };
 const TIPO_TEXTO = { cotacao: 'de cotação', renovacao: 'de renovação', outros: 'de apólices e relatórios' };
 const SITUACAO_TEXTO = { problema: 'que pedem atenção', rodando: 'rodando agora', ok: 'que deram certo na última vez' };
 // "Sistemas nossos" virou "Sistemas internos" (13-10-2026, análise de leitura
@@ -89,7 +89,68 @@ function robosDoRecorte() {
 
 const somar = (pares) => pares.reduce((t, [s, e]) => [t[0] + s, t[1] + e], [0, 0]);
 
-/** [sucesso, erro] do robô no período atual e no anterior (mesmo tamanho). */
+// --- Dias do período (15-10-2026: "Este mês" e "Escolher dias") ---------------
+// `r.dias[i]` é o dia `primeiro_dia + i`; a API traz os últimos 60 dias.
+const doisDigitos = (n) => String(n).padStart(2, '0');
+const isoDe = (d) => `${d.getFullYear()}-${doisDigitos(d.getMonth() + 1)}-${doisDigitos(d.getDate())}`;
+const dataDeIso = (iso) => new Date(`${iso}T12:00:00`);
+const indiceDoDia = (iso) => Math.round((dataDeIso(iso) - dataDeIso(dados.primeiro_dia)) / 86_400_000);
+const totalDeDias = () => indiceDoDia(dados.hoje) + 1;
+function isoDoIndice(i) {
+    const d = dataDeIso(dados.primeiro_dia);
+    d.setDate(d.getDate() + i);
+    return isoDe(d);
+}
+const intervalo = (de, ate) => Array.from({ length: Math.max(0, ate - de) }, (_, k) => de + k);
+const nomeDoMes = (iso) => dataDeIso(iso).toLocaleDateString('pt-BR', { month: 'long' });
+function inicioDoMes(iso, deslocamento = 0) {
+    const d = dataDeIso(iso);
+    return isoDe(new Date(d.getFullYear(), d.getMonth() + deslocamento, 1, 12));
+}
+
+/** Dias escolhidos (AAAA-MM-DD, em ordem), só os que a API cobre; nenhum = hoje. */
+function diasEscolhidos() {
+    const total = totalDeDias();
+    const dias = [...new Set(String(filtros.datas || '').split(','))]
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && indiceDoDia(d) >= 0 && indiceDoDia(d) < total)
+        .sort();
+    return dias.length ? dias : [dados.hoje];
+}
+
+/** Dias (dentro da API) do mês de `iso`, até hoje. */
+function diasDoMes(iso) {
+    const mes = iso.slice(0, 7);
+    return intervalo(0, totalDeDias()).map(isoDoIndice).filter((d) => d.slice(0, 7) === mes);
+}
+
+/** Índices dos dias do período em `r.dias` (fora "hoje", que é por hora). */
+function indicesDoPeriodo() {
+    const total = totalDeDias();
+    if (filtros.periodo === 'mes') return intervalo(Math.max(0, indiceDoDia(inicioDoMes(dados.hoje))), total);
+    if (filtros.periodo === 'datas') return diasEscolhidos().map(indiceDoDia);
+    const n = Number(filtros.periodo);
+    return intervalo(total - n, total);
+}
+
+/** O período de comparação: os N dias antes, ou o mesmo trecho do mês
+ *  anterior em "Este mês". Dias escolhidos à mão não têm comparação (null). */
+function indicesAnteriores() {
+    const total = totalDeDias();
+    if (filtros.periodo === 'datas') return null;
+    if (filtros.periodo === 'mes') {
+        const inicio = indiceDoDia(inicioDoMes(dados.hoje, -1));
+        const fimDoMes = indiceDoDia(inicioDoMes(dados.hoje));
+        const ate = Math.min(fimDoMes, inicio + dataDeIso(dados.hoje).getDate());
+        return intervalo(Math.max(0, inicio), Math.max(0, ate));
+    }
+    const n = Number(filtros.periodo);
+    return intervalo(Math.max(0, total - 2 * n), Math.max(0, total - n));
+}
+
+const somaDosDias = (r, indices) => somar(indices.map((i) => r.dias[i] || [0, 0]));
+
+/** [sucesso, erro] do robô no período atual e no anterior (mesmo tamanho;
+ *  `anterior` = null quando não há com o que comparar). */
 function contagens(r) {
     if (filtros.periodo === 'hoje') {
         // Ontem até este mesmo minuto vem do servidor (13-10-2026); somar
@@ -99,8 +160,8 @@ function contagens(r) {
         const anterior = r.ontem_ate_agora || somar(r.horas_ontem.slice(0, h + 1));
         return { atual: somar(r.horas_hoje), anterior };
     }
-    const n = Number(filtros.periodo);
-    return { atual: somar(r.dias.slice(-n)), anterior: somar(r.dias.slice(-2 * n, -n)) };
+    const anteriores = indicesAnteriores();
+    return { atual: somaDosDias(r, indicesDoPeriodo()), anterior: anteriores && somaDosDias(r, anteriores) };
 }
 
 const taxaDe = ([s, e]) => (s + e ? s / (s + e) : null);
@@ -126,12 +187,48 @@ const textoOscilou = (r) => {
 };
 
 // --- Frases ---------------------------------------------------------------------------
+const listaComE = (itens) => (itens.length > 1 ? `${itens.slice(0, -1).join(', ')} e ${itens.at(-1)}` : itens[0]);
+
+/** Como contar os dias escolhidos: "Em 13/10", "Em setembro inteiro", "Nos 5 dias escolhidos". */
+function descricaoDosDias() {
+    const dias = diasEscolhidos();
+    const mes = diasDoMes(dias[0]);
+    const mesInteiro = dias.length > 1 && dias.length === mes.length && dias.every((d) => mes.includes(d));
+    if (mesInteiro) {
+        const nome = nomeDoMes(dias[0]);
+        if (dias[0].slice(0, 7) === dados.hoje.slice(0, 7)) return { periodo: `Em ${nome}, até agora`, curto: 'no mês' };
+        // O mês mais antigo pode vir cortado pelos 60 dias da API.
+        const cortado = dias[0] !== inicioDoMes(dias[0]);
+        return { periodo: `Em ${nome}${cortado ? ` (desde ${dataCurta(dataDeIso(dias[0]))})` : ' inteiro'}`, curto: `em ${nome}` };
+    }
+    const curtos = dias.map((d) => dataCurta(dataDeIso(d)));
+    if (dias.length <= 3) return { periodo: `Em ${listaComE(curtos)}`, curto: `em ${listaComE(curtos)}` };
+    return { periodo: `Nos ${dias.length} dias escolhidos`, curto: 'nos dias escolhidos' };
+}
+
+/** Os textos de cada período, num lugar só. */
+function textosDoPeriodo() {
+    if (filtros.periodo === 'mes') {
+        const ant = nomeDoMes(inicioDoMes(dados.hoje, -1));
+        return {
+            periodo: `Em ${nomeDoMes(dados.hoje)}, até agora`, curto: 'no mês', anterior: `no mesmo período de ${ant}`,
+            fraseAnterior: `Em ${ant}, no mesmo período`, vs: `do mesmo período de ${ant}`, ref: `${ant}, mesmo período`,
+        };
+    }
+    if (filtros.periodo === 'datas') return descricaoDosDias();
+    return {
+        hoje: { periodo: 'Hoje, até agora', curto: 'hoje', anterior: 'ontem até esta hora', fraseAnterior: 'Ontem, até esta hora', vs: 'de ontem até esta hora', ref: 'ontem, mesma hora' },
+        7: { periodo: 'Nos últimos 7 dias', curto: 'em 7 dias', anterior: 'nos 7 dias anteriores', fraseAnterior: 'Nos 7 dias anteriores', vs: 'dos 7 dias anteriores', ref: '7 dias antes' },
+        30: { periodo: 'Nos últimos 30 dias', curto: 'em 30 dias', anterior: 'nos 30 dias anteriores', fraseAnterior: 'Nos 30 dias anteriores', vs: 'dos 30 dias anteriores', ref: '30 dias antes' },
+    }[filtros.periodo] || { periodo: 'No período', curto: 'no período' };
+}
+
 function textoPeriodo() {
-    return { hoje: 'Hoje, até agora', 7: 'Nos últimos 7 dias', 30: 'Nos últimos 30 dias' }[filtros.periodo];
+    return textosDoPeriodo().periodo;
 }
 
 function textoAnterior() {
-    return { hoje: 'ontem até esta hora', 7: 'nos 7 dias anteriores', 30: 'nos 30 dias anteriores' }[filtros.periodo];
+    return textosDoPeriodo().anterior;
 }
 
 function textoEscopo(lista) {
@@ -144,11 +241,9 @@ function textoEscopo(lista) {
     return partes.join(' ');
 }
 
-const TEXTO_ANTERIOR_FRASE = { hoje: 'Ontem, até esta hora', 7: 'Nos 7 dias anteriores', 30: 'Nos 30 dias anteriores' };
-
 /** Complemento de "acima/abaixo" nas notas dos números. */
 function textoVs() {
-    return { hoje: 'de ontem até esta hora', 7: 'dos 7 dias anteriores', 30: 'dos 30 dias anteriores' }[filtros.periodo];
+    return textosDoPeriodo().vs;
 }
 
 // --- Desenho --------------------------------------------------------------------------
@@ -163,7 +258,7 @@ function kpi(id, valor, nota, estado) {
  *  "−5 pontos vs ontem" pedia conta; "ontem, mesma hora: 92%" não). */
 function comparacao(atual, anterior, textoAnterior, { bomQuandoSobe = true } = {}) {
     if (anterior === null || anterior === undefined) return html`<span class="fraco">sem base para comparar</span>`;
-    const ref = REFERENCIA_CURTA[filtros.periodo];
+    const ref = textosDoPeriodo().ref;
     if (Math.round(atual * 100) === Math.round(anterior * 100)) {
         return html`<span class="tendencia" data-direcao="igual" title="Igual ${textoVs()}"><i class="bi bi-dash"></i>${ref}: ${textoAnterior}</span>`;
     }
@@ -172,8 +267,6 @@ function comparacao(atual, anterior, textoAnterior, { bomQuandoSobe = true } = {
     const bom = bomQuandoSobe === null ? 'neutro' : String(sobe === bomQuandoSobe);
     return html`<span class="tendencia" data-direcao="${sobe ? 'sobe' : 'desce'}" data-bom="${bom}" title="${sobe ? 'Acima' : 'Abaixo'} ${textoVs()}, que foi ${textoAnterior}"><i class="bi bi-arrow-${sobe ? 'up' : 'down'}-right"></i>${ref}: ${textoAnterior}</span>`;
 }
-
-const REFERENCIA_CURTA = { hoje: 'ontem, mesma hora', 7: '7 dias antes', 30: '30 dias antes' };
 
 // Manchete (09-10-2026): começa pela RESPOSTA — quantos pedem atenção e
 // quantos estão em dia —, só com as cores de estado (vermelho/verde). O
@@ -219,11 +312,15 @@ function desenharManchete(lista, totais, atencao) {
     const volume = execs
         ? `${plural(execs, 'execução', 'execuções')}${taxa === null ? '' : `, ${percentual(taxa)} deram certo`}`
         : 'Nenhuma execução no período';
-    const [okAnt, falhasAnt] = totais.anterior;
+    // Dias escolhidos à mão não têm período anterior: a frase de comparação sai.
+    const [okAnt, falhasAnt] = totais.anterior || [0, 0];
     const execsAnt = okAnt + falhasAnt;
-    const anterior = execsAnt
-        ? `${TEXTO_ANTERIOR_FRASE[filtros.periodo]}: ${plural(execsAnt, 'execução', 'execuções')}, ${percentual(taxaDe(totais.anterior))} deram certo.`
-        : `Não houve execução ${textoAnterior()} para comparar.`;
+    let anterior = '';
+    if (totais.anterior) {
+        anterior = execsAnt
+            ? `${textosDoPeriodo().fraseAnterior}: ${plural(execsAnt, 'execução', 'execuções')}, ${percentual(taxaDe(totais.anterior))} deram certo.`
+            : `Não houve execução ${textoAnterior()} para comparar.`;
+    }
     $('#manchete-contexto').textContent = [quem, `${volume}.`, anterior].filter(Boolean).join(' ');
     // Pausa dos robôs (notebook fora da empresa): só desde quando, sem nome.
     // Quem está rodando fica só no número "Rodando agora" (13-10-2026: aparecia
@@ -240,13 +337,17 @@ function proximaDaLista(lista) {
 function desenharNumeros(lista, totais) {
     const [ok, falhas] = totais.atual;
     const execs = ok + falhas;
-    const execsAnt = totais.anterior[0] + totais.anterior[1];
+    // Sem período anterior (dias escolhidos), a nota diz de quantos dias é o número.
+    const semComparacao = !totais.anterior;
+    const notaDias = semComparacao ? plural(diasEscolhidos().length, 'dia escolhido', 'dias escolhidos') : '';
+    const execsAnt = semComparacao ? 0 : totais.anterior[0] + totais.anterior[1];
     kpi('kpi-execucoes', html`${numero(execs)}`,
-        comparacao(execs, execsAnt || null, numero(execsAnt), { bomQuandoSobe: null }));
+        semComparacao ? notaDias : comparacao(execs, execsAnt || null, numero(execsAnt), { bomQuandoSobe: null }));
     const taxa = taxaDe(totais.atual);
-    const taxaAnt = taxaDe(totais.anterior);
+    const taxaAnt = semComparacao ? null : taxaDe(totais.anterior);
     kpi('kpi-taxa', html`${percentual(taxa)}`,
-        taxa === null ? 'nenhuma execução no período' : comparacao(taxa, taxaAnt, taxaAnt === null ? '' : percentual(taxaAnt)),
+        taxa === null ? 'nenhuma execução no período'
+            : (semComparacao ? notaDias : comparacao(taxa, taxaAnt, taxaAnt === null ? '' : percentual(taxaAnt))),
         taxa === null ? null : (taxa >= 0.9 ? 'ok' : (taxa >= 0.7 ? 'atencao' : 'falha')));
     // "Pedem atenção" saiu dos números (13-10-2026): a manchete já responde.
     const rodando = lista.filter((r) => r.rodando);
@@ -266,17 +367,9 @@ function serieDoRitmo(lista) {
         const valores = rotulos.map((_, i) => somar(lista.map((r) => r.horas_hoje[i])));
         return { rotulos, valores, unidade: 'hora' };
     }
-    const n = Number(filtros.periodo);
-    const inicio = new Date(`${dados.primeiro_dia}T12:00:00`);
-    const total = dados.robos[0]?.dias.length || 0;
-    const rotulos = [];
-    const valores = [];
-    for (let i = total - n; i < total; i += 1) {
-        const d = new Date(inicio);
-        d.setDate(d.getDate() + i);
-        rotulos.push(dataCurta(d));
-        valores.push(somar(lista.map((r) => r.dias[i])));
-    }
+    const indices = indicesDoPeriodo();
+    const rotulos = indices.map((i) => dataCurta(dataDeIso(isoDoIndice(i))));
+    const valores = indices.map((i) => somar(lista.map((r) => r.dias[i] || [0, 0])));
     return { rotulos, valores, unidade: 'dia' };
 }
 
@@ -445,7 +538,6 @@ function desenharRobos(lista) {
 
 const PESO_GRUPO = { falha: 0, atencao: 0, oscilou: 1, rodando: 2, ok: 3, neutro: 4 };
 const SELO_GRUPO = { falha: 'Pede atenção', atencao: 'Pede atenção', oscilou: 'Oscilou', rodando: 'Rodando agora', ok: 'Em dia', neutro: 'Sem execução' };
-const PERIODO_CURTO = { hoje: 'hoje', 7: 'em 7 dias', 30: 'em 30 dias' };
 
 /** A história de uma seguradora: estado, taxa e a frase que responde
  *  "como foi o dia dela?" — o problema primeiro, se houver. */
@@ -469,11 +561,11 @@ function resumoDoGrupo(g) {
         // Oscilou: a última deu certo, mas a maior parte do período falhou.
         estado = 'oscilou';
         const [p] = instaveis;
-        frase = `${nome(p)} oscilou: ${textoOscilou(p.r)} ${PERIODO_CURTO[filtros.periodo]}.${p.r.rodando ? ' Está rodando agora.' : ''}`;
+        frase = `${nome(p)} oscilou: ${textoOscilou(p.r)} ${textosDoPeriodo().curto}.${p.r.rodando ? ' Está rodando agora.' : ''}`;
     } else {
         const partes = [];
         if (rodando.length) partes.push(`${rodando.map(nome).join(' e ')} ${rodando.length === 1 ? 'está' : 'estão'} rodando agora`);
-        if (execucoes) partes.push(`${plural(execucoes, 'execução', 'execuções')} ${PERIODO_CURTO[filtros.periodo]}, ${taxa === 1 ? 'todas deram certo' : `${percentual(taxa)} deram certo`}`);
+        if (execucoes) partes.push(`${plural(execucoes, 'execução', 'execuções')} ${textosDoPeriodo().curto}, ${taxa === 1 ? 'todas deram certo' : `${percentual(taxa)} deram certo`}`);
         else if (rodando.length) { /* a primeira execução do período é a que está rodando */ }
         else if (agendados.length) {
             const proxima = proximaDaLista(agendados.map((i) => i.r));
@@ -531,23 +623,69 @@ function desenharFiltros(lista) {
         montar(sel, opcoes.map(([v, t]) => html`<option value="${v}">${t}</option>`));
     }
     sel.value = filtros.seguradora;
-    const ativos = Object.keys(PADROES).filter((k) => filtros[k] !== PADROES[k]);
+    // `datas` só conta com "Escolher dias" ligado (nos outros períodos não muda nada).
+    const ativos = Object.keys(PADROES).filter((k) => filtros[k] !== PADROES[k] && (k !== 'datas' || filtros.periodo === 'datas'));
     $('#limpar-filtros').hidden = !ativos.length;
     $('#recorte').textContent = lista.length === dados.robos.length
         ? `· ${plural(dados.robos.length, 'robô ativo', 'robôs ativos')}`
         : `· ${lista.length} de ${plural(dados.robos.length, 'robô ativo', 'robôs ativos')}`;
 }
 
+// Calendário de "Escolher dias" (15-10-2026): um mês por bloco, com "Mês
+// inteiro" em cada um. Tocar num dia marca/desmarca; nunca fica sem dia.
+const SEMANA_CURTA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+function desenharDias() {
+    const painel = $('#painel-dias');
+    painel.hidden = filtros.periodo !== 'datas';
+    if (painel.hidden) return;
+    const escolhidos = new Set(diasEscolhidos());
+    const dias = intervalo(0, totalDeDias()).map(isoDoIndice);
+    const meses = [...new Set(dias.map((d) => d.slice(0, 7)))];
+    const rolagem = painel.querySelector('.painel-dias-meses')?.scrollLeft;
+    montar(painel, html`
+        <p class="painel-dias-topo"><span>${textoPeriodo()}${escolhidos.size > 1 ? ` · ${plural(escolhidos.size, 'dia', 'dias')}` : ''}</span>
+            <button type="button" class="btn btn-sm btn-fantasma" data-acao="hoje"><i class="bi bi-calendar-event"></i>Só hoje</button></p>
+        <div class="painel-dias-meses">${meses.map((mes) => {
+            const doMes = dias.filter((d) => d.slice(0, 7) === mes);
+            const antes = dataDeIso(doMes[0]).getDay();
+            const inteiro = doMes.every((d) => escolhidos.has(d));
+            return html`<div class="dias-mes">
+                <div class="dias-mes-topo"><strong>${nomeDoMes(doMes[0])}</strong>
+                    <button type="button" class="btn btn-sm btn-contorno" data-mes="${mes}" aria-pressed="${inteiro}">Mês inteiro</button></div>
+                <div class="dias-cal">
+                    ${SEMANA_CURTA.map((s) => html`<span class="dias-semana" aria-hidden="true">${s}</span>`)}
+                    ${Array.from({ length: antes }, () => html`<span aria-hidden="true"></span>`)}
+                    ${doMes.map((d) => html`<button type="button" class="dia" data-dia="${d}" aria-pressed="${escolhidos.has(d)}"
+                        ${[0, 6].includes(dataDeIso(d).getDay()) ? 'data-fds' : ''} ${d === dados.hoje ? 'data-hoje' : ''}
+                        title="${dataDeIso(d).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}">${Number(d.slice(8, 10))}</button>`)}
+                </div>
+            </div>`;
+        })}</div>`);
+    // Abre no mês corrente (no celular a faixa rola de lado) e não perde a
+    // rolagem na atualização de cada minuto.
+    const faixa = painel.querySelector('.painel-dias-meses');
+    faixa.scrollLeft = rolagem ?? faixa.scrollWidth;
+}
+
+function marcarDias(dias) {
+    filtros.datas = [...new Set(dias)].sort().join(',');
+    aoMudarFiltro();
+}
+
 function desenhar() {
     if (!dados) return;
     const lista = robosDoRecorte();
     const porRobo = lista.map((r) => ({ robo: r, ...contagens(r) }));
-    const totais = { atual: somar(porRobo.map((x) => x.atual)), anterior: somar(porRobo.map((x) => x.anterior)) };
+    const totais = {
+        atual: somar(porRobo.map((x) => x.atual)),
+        anterior: filtros.periodo === 'datas' ? null : somar(porRobo.map((x) => x.anterior || [0, 0])),
+    };
     const atencao = lista
         .map((r) => ({ robo: r, motivos: precisaAtencao(r), taxa: taxaDe(contagens(r).atual) }))
         .filter((a) => a.motivos.length)
         .sort((a, b) => b.robo.travado - a.robo.travado || (a.taxa ?? 1) - (b.taxa ?? 1));
     desenharFiltros(lista);
+    desenharDias();
     desenharManchete(lista, totais, atencao);
     desenharNumeros(lista, totais);
     desenharRitmo(lista);
@@ -584,6 +722,18 @@ $('#lista-robos').addEventListener('toggle', (ev) => {
 }, true);
 
 $('#filtro-seguradora').addEventListener('change', (ev) => { filtros.seguradora = ev.target.value; aoMudarFiltro(); });
+$('#painel-dias').addEventListener('click', (ev) => {
+    const alvo = ev.target.closest('button');
+    if (!alvo || !dados) return;
+    const atuais = diasEscolhidos();
+    if (alvo.dataset.acao === 'hoje') marcarDias([dados.hoje]);
+    else if (alvo.dataset.mes) marcarDias(diasDoMes(`${alvo.dataset.mes}-01`));
+    else if (alvo.dataset.dia) {
+        const dia = alvo.dataset.dia;
+        if (!atuais.includes(dia)) marcarDias([...atuais, dia]);
+        else if (atuais.length > 1) marcarDias(atuais.filter((d) => d !== dia));
+    }
+});
 $('#limpar-filtros').addEventListener('click', () => {
     Object.assign(filtros, PADROES);
     document.querySelectorAll('.painel-filtros [data-filtro]').forEach((el) => el.querySelectorAll('[data-valor]').forEach((b) => {
