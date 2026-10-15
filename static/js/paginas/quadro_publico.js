@@ -17,7 +17,7 @@ const COLUNAS = [
 // API na Central; arquivo JSON no site estático (GitHub Pages). O `t=`
 // fura o cache do Pages (~10 min) para pegar a última publicação.
 const FONTE = document.querySelector('[data-fonte]').dataset.fonte;
-// No GitHub Pages: os números do rc4vc.com/central, republicados a cada
+// No GitHub Pages: os números do site no Cloudflare, republicados a cada
 // minuto. Se ele falhar ou demorar, vale a cópia do próprio site (FONTE).
 const FONTE_AO_VIVO = document.querySelector('[data-fonte]').dataset.fonteAoVivo;
 
