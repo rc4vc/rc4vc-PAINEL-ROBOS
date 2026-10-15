@@ -1400,3 +1400,97 @@ body:has(.kanban-quadro) .kanban-quadro { flex: 1; margin-bottom: 0; }
 @media (max-width: 560px) {
     .kpis-faixa .kpi { padding: var(--e-3); }
 }
+
+/* ==========================================================================
+   Farol de cotações (/farol-publico, 15-10-2026): em que pé está a
+   atualização das cotações no nosso sistema, por seguradora x profissão.
+   Cores = legenda da planilha (tokens --farol-*). Ver farol_publico.js.
+   ========================================================================== */
+.farol-cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--e-4); }
+.farol-cartao { display: flex; flex-direction: column; gap: var(--e-3); padding: var(--e-5); background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-lg); box-shadow: var(--sombra-1); min-width: 0; }
+.farol-cartao-topo { display: flex; justify-content: space-between; align-items: baseline; gap: var(--e-3); }
+.farol-cartao-topo h3 { margin: 0; font-size: var(--fs-base); }
+.farol-cartao-topo span { color: var(--texto-3); font-size: var(--fs-xs); }
+.farol-frase { margin: 0; font-family: var(--fonte-titulo); font-size: var(--fs-lg); font-weight: var(--peso-forte); line-height: var(--altura-titulo); text-wrap: pretty; }
+.farol-detalhe { margin: 0; color: var(--texto-2); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.farol-barra { display: flex; height: 14px; border-radius: var(--raio-pilula); overflow: hidden; background: var(--superficie-2); }
+.farol-barra span { display: block; height: 100%; }
+
+/* Amostra de cor: a mesma em barras, legenda, edição e células. */
+[data-situacao="producao"] { --cor-farol: var(--farol-producao); }
+[data-situacao="pendente_faq"] { --cor-farol: var(--farol-pendente-faq); }
+[data-situacao="pendente_comparativo"] { --cor-farol: var(--farol-pendente-comparativo); }
+[data-situacao="nao_cotado"] { --cor-farol: var(--farol-nao-cotado); }
+[data-situacao="nao_trabalha"] { --cor-farol: var(--superficie); background-image: radial-gradient(circle, var(--farol-ponto) 1px, transparent 1.3px); background-size: 6px 6px; }
+.farol-barra [data-situacao], .farol-amostra, .farol-cel[data-situacao] { background-color: var(--cor-farol); }
+.farol-amostra { flex: none; width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--texto) 14%, transparent); }
+
+.farol-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--e-4); }
+.farol-ranking { display: flex; flex-direction: column; gap: var(--e-2); margin: 0; padding: 0; list-style: none; }
+.farol-ranking li { display: grid; grid-template-columns: 96px minmax(0, 1fr) 32px; gap: var(--e-3); align-items: center; font-size: var(--fs-sm); }
+.farol-ranking .nome { font-weight: var(--peso-forte); }
+.farol-ranking .n { text-align: right; font-weight: var(--peso-titulo); font-variant-numeric: tabular-nums; }
+.farol-ranking .trilho { display: flex; height: 12px; border-radius: var(--raio-pilula); overflow: hidden; background: var(--superficie-2); }
+.farol-ranking .trilho span { display: block; height: 100%; }
+
+.farol-ritmo { display: grid; grid-template-columns: repeat(var(--meses, 12), minmax(0, 1fr)); gap: var(--e-2); align-items: end; height: 170px; }
+.farol-mes { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--e-1); height: 100%; min-width: 0; }
+.farol-mes .n { font-size: var(--fs-xs); font-weight: var(--peso-titulo); font-variant-numeric: tabular-nums; color: var(--texto-2); }
+.farol-mes .barra { width: 100%; max-width: 56px; height: var(--h, 0%); min-height: 2px; border-radius: 6px 6px 2px 2px; background: var(--farol-producao); }
+.farol-mes[data-topo] .barra { background: var(--ok); }
+.farol-mes[data-topo] .n { color: var(--texto); }
+.farol-mes .rot { font-size: var(--fs-2xs); color: var(--texto-3); white-space: nowrap; }
+
+.farol-legenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: var(--e-3); margin-bottom: var(--e-4); }
+.farol-chip { display: flex; gap: var(--e-3); align-items: center; padding: var(--e-3) var(--e-4); text-align: left; background: var(--superficie); color: var(--texto); border: 1px solid var(--borda); border-radius: var(--raio-lg); box-shadow: var(--sombra-1); cursor: pointer; font: inherit; }
+.farol-chip:hover { border-color: var(--primaria); }
+.farol-chip[aria-pressed="true"] { border: 2px solid var(--primaria); }
+.farol-legenda[data-filtro] .farol-chip[aria-pressed="false"] { opacity: .55; }
+.farol-chip .farol-amostra { width: 36px; height: 36px; border-radius: var(--raio-md); }
+.farol-chip .rotulo { display: block; font-size: var(--fs-xs); font-weight: var(--peso-medio); color: var(--texto-2); }
+.farol-chip .valor { font-family: var(--fonte-numero); font-size: var(--fs-xl); font-weight: var(--peso-titulo); font-variant-numeric: tabular-nums; }
+.farol-chip .pct { margin-left: var(--e-1); color: var(--texto-3); font-size: var(--fs-xs); }
+
+.farol-barra-mapa { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--e-3); margin-bottom: var(--e-3); color: var(--texto-2); font-size: var(--fs-sm); }
+.farol-edicao { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-3) var(--e-5); padding: var(--e-3) var(--e-4); margin-bottom: var(--e-4); background: var(--superficie); border: 1px solid var(--primaria); border-radius: var(--raio-lg); box-shadow: var(--sombra-2); }
+.farol-edicao[hidden] { display: none; }
+.farol-edicao .sel { display: flex; flex-direction: column; min-width: 200px; }
+.farol-edicao .sel small { font-size: var(--fs-2xs); font-weight: var(--peso-medio); letter-spacing: .04em; text-transform: uppercase; color: var(--texto-3); }
+.farol-edicao .sel strong { font-size: var(--fs-base); }
+.farol-opcoes { display: flex; flex-wrap: wrap; gap: var(--e-2); }
+.farol-opcoes .btn[aria-pressed="true"] { border: 2px solid var(--texto); }
+.farol-edicao label { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-2xs); font-weight: var(--peso-medio); text-transform: uppercase; letter-spacing: .04em; color: var(--texto-3); }
+.farol-edicao input[type="date"] { min-height: 38px; padding: 0 var(--e-2); font: inherit; font-size: var(--fs-sm); text-transform: none; letter-spacing: 0; color: var(--texto); background: var(--superficie); border: 1px solid var(--borda-forte); border-radius: var(--raio-md); }
+.farol-edicao .fim { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--e-2); }
+
+.farol-mapa-caixa { overflow-x: auto; padding: var(--e-5) var(--e-5) var(--e-4) 0; background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio-lg); box-shadow: var(--sombra-1); }
+.farol-mapa { --coluna: 48px; width: max-content; }
+.farol-grade { display: grid; grid-template-columns: 140px repeat(var(--colunas, 27), var(--coluna)); column-gap: 4px; }
+.farol-fixa { position: sticky; left: 0; z-index: 5; background: var(--superficie); }
+.farol-areas-faixa { margin-bottom: var(--e-2); }
+.farol-areas-faixa .area { padding: 4px 8px; border-radius: var(--raio-md); background: var(--farol-area); color: var(--farol-area-texto); font-size: var(--fs-xs); font-weight: var(--peso-titulo); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.farol-cabecalho { grid-template-rows: 128px 26px; row-gap: 2px; padding-bottom: 6px; }
+.farol-cabecalho .canto { grid-column: 1; grid-row: 1 / span 2; display: flex; align-items: flex-end; padding: 0 0 6px var(--e-5); font-size: var(--fs-xs); font-weight: var(--peso-medio); letter-spacing: .04em; text-transform: uppercase; color: var(--texto-3); }
+.farol-cabecalho .prof { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; }
+.farol-cabecalho .prof.grupo { grid-row: 1; border-bottom: 2px solid var(--borda-forte); }
+.farol-cabecalho .prof.solo { grid-row: 1 / span 2; }
+.farol-cabecalho .prof span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: var(--fs-xs); font-weight: var(--peso-medio); line-height: 1.15; max-height: 120px; }
+.farol-cabecalho .tipo { grid-row: 2; display: flex; align-items: center; justify-content: center; font-size: var(--fs-2xs); font-weight: var(--peso-titulo); color: var(--texto-3); }
+.farol-linha { height: 40px; align-items: center; border-radius: 0 var(--raio-md) var(--raio-md) 0; }
+.farol-linha:hover, .farol-linha:hover .farol-fixa { background: var(--primaria-suave); }
+.farol-linha .farol-fixa { height: 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--e-2); padding: 0 var(--e-2) 0 var(--e-5); box-sizing: border-box; font-weight: var(--peso-forte); }
+.farol-linha .conta { min-width: 22px; padding: 1px 7px; border-radius: var(--raio-pilula); background: var(--farol-producao); color: var(--farol-texto); font-size: var(--fs-xs); font-weight: var(--peso-titulo); text-align: center; font-variant-numeric: tabular-nums; }
+.farol-cel { position: relative; display: flex; align-items: center; justify-content: center; height: 32px; margin: 0; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--farol-texto); font: inherit; font-size: 10.5px; font-weight: var(--peso-forte); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; cursor: pointer; transition: transform var(--dur-rapida) var(--curva), box-shadow var(--dur-rapida), opacity var(--dur-media); }
+.farol-cel:not([data-situacao]) { box-shadow: inset 0 0 0 1px var(--borda); cursor: default; }
+.farol-cel[data-situacao="nao_trabalha"] { box-shadow: inset 0 0 0 1px var(--borda); }
+.farol-cel:hover { transform: scale(1.12); box-shadow: var(--sombra-2); z-index: 4; }
+.farol-cel:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.farol-cel[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--superficie), 0 0 0 4px var(--texto); z-index: 3; }
+.farol-cel[data-mudou]::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--texto); }
+.farol-mapa[data-filtro="producao"] .farol-cel:not([data-situacao="producao"]),
+.farol-mapa[data-filtro="pendente_faq"] .farol-cel:not([data-situacao="pendente_faq"]),
+.farol-mapa[data-filtro="pendente_comparativo"] .farol-cel:not([data-situacao="pendente_comparativo"]),
+.farol-mapa[data-filtro="nao_trabalha"] .farol-cel:not([data-situacao="nao_trabalha"]),
+.farol-mapa[data-filtro="nao_cotado"] .farol-cel:not([data-situacao="nao_cotado"]) { opacity: .12; }
+.farol-mapa[data-editando] .farol-cel { cursor: pointer; }
+.farol-nota { margin: var(--e-3) 0 0; color: var(--texto-3); font-size: var(--fs-xs); }
